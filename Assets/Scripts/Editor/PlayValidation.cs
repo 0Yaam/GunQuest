@@ -181,7 +181,11 @@ public static class PlayValidation
                         session = null;
                         Next();
                     }
-                    else if (session.EnemiesRemaining > 0) ClearWave();
+                    else if (session.EnemiesRemaining > 0)
+                    {
+                        ValidateWaveRoles();
+                        ClearWave();
+                    }
                     break;
                 case 9:
                     Check(session.State == PlayState.Menu && session.Wave == 0 && session.Kills == 0, "Restart must restore a fresh menu and run.");
@@ -212,6 +216,20 @@ public static class PlayValidation
     private static void ClearWave()
     {
         foreach (var enemy in UnityEngine.Object.FindObjectsByType<EnemyHealth>()) enemy.TakeDamage(10000);
+    }
+
+    private static void ValidateWaveRoles()
+    {
+        bool runner = false, juggernaut = false, marksman = false;
+        foreach (var enemy in UnityEngine.Object.FindObjectsByType<Enemy>())
+        {
+            runner |= enemy.Role == GunQuest.Game.EnemyRole.Runner;
+            juggernaut |= enemy.Role == GunQuest.Game.EnemyRole.Juggernaut;
+            marksman |= enemy.Role == GunQuest.Game.EnemyRole.Marksman;
+        }
+        if (session.Wave >= 2) Check(runner, "Wave two and later must field runners.");
+        if (session.Wave >= 3) Check(juggernaut, "Wave three and later must field a juggernaut.");
+        if (session.Wave >= 4) Check(marksman, "Wave four and later must field a marksman.");
     }
 
     private static void Capture(string name)

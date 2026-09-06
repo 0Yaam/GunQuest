@@ -31,6 +31,10 @@ public static class CoreValidation
         }
         Require(recruitEnemies == 25 && operatorEnemies == 40 && veteranEnemies == 55,
             "Threat profiles must preserve their intended five-wave progression.");
+        Require(GameSession.RoleForSpawn(1, 6) == EnemyRole.Striker, "The opening wave must teach the standard striker.");
+        Require(GameSession.RoleForSpawn(2, 2) == EnemyRole.Runner, "Runners must enter from wave two.");
+        Require(GameSession.RoleForSpawn(3, 4) == EnemyRole.Juggernaut, "Juggernauts must enter from wave three.");
+        Require(GameSession.RoleForSpawn(4, 6) == EnemyRole.Marksman, "Marksmen must enter from wave four.");
 
         var go = new GameObject("Health validation");
         try

@@ -86,6 +86,10 @@ public class AttackState : BaseState
         Vector3 shootDirection = (aimTarget - spawnPoint.position).normalized;
 
         GameObject bulletObj = Object.Instantiate(enemy.bulletPrefab, spawnPoint.position, Quaternion.LookRotation(shootDirection));
-        if (bulletObj.TryGetComponent<Bullet>(out var bullet)) bullet.SetOwner(enemy.transform);
+        if (bulletObj.TryGetComponent<Bullet>(out var bullet))
+        {
+            bullet.SetOwner(enemy.transform);
+            bullet.Configure(enemy.bulletDamage, enemy.bulletSpeed);
+        }
     }
 }

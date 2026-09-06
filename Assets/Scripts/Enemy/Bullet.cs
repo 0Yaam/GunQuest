@@ -12,6 +12,11 @@ public class Bullet : MonoBehaviour
     private bool consumed;
 
     public void SetOwner(Transform value) => owner = value;
+    public void Configure(float newDamage, float newSpeed)
+    {
+        damage = Mathf.Max(0f, newDamage);
+        speed = Mathf.Max(1f, newSpeed);
+    }
 
     void Start()
     {

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using GunQuest.Game;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(StateMachine))]
@@ -12,6 +13,7 @@ public class Enemy : MonoBehaviour
     public NavMeshAgent Agent => agent;
     public GameObject Player => player;
     public StateMachine StateMachine => stateMachine;
+    public EnemyRole Role { get; set; }
 
     [Header("Patrol Settings")]
     public Path path;
@@ -28,6 +30,8 @@ public class Enemy : MonoBehaviour
     public GameObject bulletPrefab;
     [Range(0.1f, 10f)]
     public float fireRate = 1.2f;
+    public float bulletDamage = 15f;
+    public float bulletSpeed = 35f;
 
     [Header("Debug")]
     [SerializeField]

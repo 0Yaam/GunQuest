@@ -9,6 +9,7 @@ namespace GunQuest.Game
 {
     public enum SessionState { Menu, Playing, Paused, Victory, Defeat }
     public enum Difficulty { Recruit, Operator, Veteran }
+    public enum EnemyRole { Striker, Runner, Juggernaut, Marksman }
 }
 
 public sealed class GameSession : MonoBehaviour
@@ -46,11 +47,23 @@ public sealed class GameSession : MonoBehaviour
     public bool HasNextMission => MissionIndex < MissionScenes.Length - 1;
     public string BestScoreKey => $"GunQuest.BestScore.{SceneManager.GetActiveScene().name}.{Difficulty}";
     public int EnemiesRemaining => enemies.Count;
+    public string ThreatSummary
+    {
+        get
+        {
+            string summary = "";
+            if (roleCounts[(int)EnemyRole.Runner] > 0) summary += $"{roleCounts[(int)EnemyRole.Runner]} RUN";
+            if (roleCounts[(int)EnemyRole.Juggernaut] > 0) summary += (summary.Length > 0 ? "  /  " : "") + $"{roleCounts[(int)EnemyRole.Juggernaut]} JUG";
+            if (roleCounts[(int)EnemyRole.Marksman] > 0) summary += (summary.Length > 0 ? "  /  " : "") + $"{roleCounts[(int)EnemyRole.Marksman]} MRK";
+            return summary;
+        }
+    }
     public float NextWaveIn => Mathf.Max(0f, waveAt - Time.time);
     public float Elapsed { get; private set; }
     public string Notice { get; private set; } = "";
     public event System.Action StateChanged;
     private readonly HashSet<EnemyHealth> enemies = new HashSet<EnemyHealth>();
+    private readonly int[] roleCounts = new int[4];
     private float waveAt;
     private float noticeUntil;
 
@@ -82,6 +95,14 @@ public sealed class GameSession : MonoBehaviour
             Difficulty.Veteran => 2 + wave * 3,
             _ => 2 + wave * 2
         };
+    }
+
+    public static EnemyRole RoleForSpawn(int wave, int index)
+    {
+        if (wave >= 4 && index % 7 == 6) return EnemyRole.Marksman;
+        if (wave >= 3 && index % 5 == 4) return EnemyRole.Juggernaut;
+        if (wave >= 2 && index % 3 == 2) return EnemyRole.Runner;
+        return EnemyRole.Striker;
     }
 
     public void StartRun()
@@ -127,10 +148,15 @@ public sealed class GameSession : MonoBehaviour
             enemy.huntPlayer = true;
             enemy.fireRate = Mathf.Max(0.5f, (1.8f - Wave * 0.15f) / difficultyScale);
             enemy.Agent.speed = (2.5f + Wave * 0.2f) * Mathf.Lerp(0.9f, 1.08f, (difficultyScale - 0.78f) / 0.5f);
+            EnemyRole role = RoleForSpawn(Wave, i);
+            ConfigureRole(enemy, role);
             var health = enemy.GetComponent<EnemyHealth>();
-            health.Configure((68f + Wave * 9f) * difficultyScale);
+            float roleHealth = role == EnemyRole.Runner ? 0.68f : role == EnemyRole.Juggernaut ? 1.85f : role == EnemyRole.Marksman ? 0.82f : 1f;
+            Color roleColor = role == EnemyRole.Runner ? new Color(0.25f, 1f, 0.35f) : role == EnemyRole.Juggernaut ? new Color(1f, 0.16f, 0.06f) : role == EnemyRole.Marksman ? new Color(0.15f, 0.72f, 1f) : new Color(1f, 0.38f, 0.08f);
+            health.Configure((68f + Wave * 9f) * difficultyScale * roleHealth, roleColor);
             health.Died += OnEnemyDied;
             enemies.Add(health);
+            roleCounts[(int)role]++;
         }
         if (enemies.Count == 0)
         {
@@ -138,7 +164,45 @@ public sealed class GameSession : MonoBehaviour
             Finish(SessionState.Defeat);
             return;
         }
-        Announce($"WAVE {Wave:00} / {enemies.Count} hostiles approaching");
+        string specialThreats = ThreatSummary;
+        Announce($"WAVE {Wave:00} / {enemies.Count} hostiles" + (specialThreats.Length > 0 ? " / " + specialThreats : " approaching"));
+    }
+
+    private static void ConfigureRole(Enemy enemy, EnemyRole role)
+    {
+        enemy.Role = role;
+        switch (role)
+        {
+            case EnemyRole.Runner:
+                enemy.transform.localScale = Vector3.one * 0.82f;
+                enemy.Agent.speed *= 1.35f;
+                enemy.Agent.stoppingDistance = 4.5f;
+                enemy.fireRate *= 0.82f;
+                enemy.bulletDamage = 10f;
+                enemy.bulletSpeed = 42f;
+                break;
+            case EnemyRole.Juggernaut:
+                enemy.transform.localScale = Vector3.one * 1.24f;
+                enemy.Agent.speed *= 0.72f;
+                enemy.Agent.stoppingDistance = 7f;
+                enemy.fireRate *= 1.18f;
+                enemy.bulletDamage = 22f;
+                enemy.bulletSpeed = 30f;
+                break;
+            case EnemyRole.Marksman:
+                enemy.transform.localScale = new Vector3(0.92f, 1.08f, 0.92f);
+                enemy.Agent.speed *= 0.82f;
+                enemy.Agent.stoppingDistance = 16f;
+                enemy.sightDistance = 68f;
+                enemy.fireRate *= 1.65f;
+                enemy.bulletDamage = 30f;
+                enemy.bulletSpeed = 68f;
+                break;
+            default:
+                enemy.bulletDamage = 15f;
+                enemy.bulletSpeed = 35f;
+                break;
+        }
     }
 
     private void OnEnemyDied(EnemyHealth enemy)
@@ -146,8 +210,11 @@ public sealed class GameSession : MonoBehaviour
         enemy.Died -= OnEnemyDied;
         if (!enemies.Remove(enemy) || State != SessionState.Playing) return;
         Kills++;
+        EnemyRole role = enemy.TryGetComponent<Enemy>(out var defeated) ? defeated.Role : EnemyRole.Striker;
+        roleCounts[(int)role] = Mathf.Max(0, roleCounts[(int)role] - 1);
         float scoreMultiplier = Difficulty == Difficulty.Recruit ? 0.75f : Difficulty == Difficulty.Veteran ? 1.5f : 1f;
-        Score += Mathf.RoundToInt((100 + Wave * 25) * scoreMultiplier);
+        float roleReward = role == EnemyRole.Runner ? 1.15f : role == EnemyRole.Juggernaut ? 2f : role == EnemyRole.Marksman ? 1.75f : 1f;
+        Score += Mathf.RoundToInt((100 + Wave * 25) * scoreMultiplier * roleReward);
         if (enemies.Count > 0) return;
         Score += Mathf.RoundToInt(250 * scoreMultiplier);
         if (Wave >= totalWaves) { Finish(SessionState.Victory); return; }

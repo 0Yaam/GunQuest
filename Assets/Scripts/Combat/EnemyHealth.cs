@@ -8,13 +8,16 @@ public sealed class EnemyHealth : MonoBehaviour
     public float CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
     private Renderer[] renderers;
+    private Renderer[] roleRenderers;
     private MaterialPropertyBlock properties;
     private float hitFlash;
+    private Color roleTint = Color.white;
 
     private void Awake()
     {
         CurrentHealth = maxHealth;
         renderers = GetComponentsInChildren<Renderer>();
+        roleRenderers = System.Array.FindAll(renderers, visual => visual.name == "Visor" || visual.name == "Reactor" || visual.name == "Shoulder");
         properties = new MaterialPropertyBlock();
     }
 
@@ -25,13 +28,28 @@ public sealed class EnemyHealth : MonoBehaviour
         float intensity = Mathf.Clamp01(hitFlash / 0.09f);
         properties.SetColor("_BaseColor", Color.Lerp(Color.white, new Color(1f, 0.25f, 0.08f), intensity));
         foreach (var visual in renderers) visual.SetPropertyBlock(properties);
-        if (hitFlash <= 0f) foreach (var visual in renderers) visual.SetPropertyBlock(null);
+        if (hitFlash <= 0f) ApplyRoleTint();
     }
 
     public void Configure(float health)
     {
         maxHealth = Mathf.Max(1f, health);
         CurrentHealth = maxHealth;
+    }
+
+    public void Configure(float health, Color tint)
+    {
+        Configure(health);
+        roleTint = tint;
+        ApplyRoleTint();
+    }
+
+    private void ApplyRoleTint()
+    {
+        foreach (var visual in renderers) visual.SetPropertyBlock(null);
+        properties.Clear();
+        properties.SetColor("_BaseColor", roleTint);
+        foreach (var visual in roleRenderers) visual.SetPropertyBlock(properties);
     }
 
     public bool TakeDamage(float damage)

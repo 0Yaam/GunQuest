@@ -156,7 +156,7 @@ public sealed class GameHud : MonoBehaviour
     {
         if (wave == null) return;
         wave.text = $"WAVE {session.Wave:00} / {session.totalWaves:00}";
-        score.text = $"{session.Score:000000}\n{session.EnemiesRemaining:00} HOSTILES";
+        score.text = $"{session.Score:000000}\n{session.EnemiesRemaining:00} HOSTILES" + (session.ThreatSummary.Length > 0 ? $"\n<size=13>{session.ThreatSummary}</size>" : "");
         float hp = session.player.GetCurrentHealth();
         health.text = $"{Mathf.CeilToInt(hp):000} / 100";
         healthFill.rectTransform.sizeDelta = new Vector2(258f * hp / session.player.maxHealth, 7);
