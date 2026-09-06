@@ -35,6 +35,8 @@ public static class CoreValidation
         Require(GameSession.RoleForSpawn(2, 2) == EnemyRole.Runner, "Runners must enter from wave two.");
         Require(GameSession.RoleForSpawn(3, 4) == EnemyRole.Juggernaut, "Juggernauts must enter from wave three.");
         Require(GameSession.RoleForSpawn(4, 6) == EnemyRole.Marksman, "Marksmen must enter from wave four.");
+        Require(GameSession.CalculateRank(80f, 90f, 120f, Difficulty.Operator) == "S", "Excellent runs must receive an S rank.");
+        Require(GameSession.CalculateRank(20f, 20f, 500f, Difficulty.Operator) == "C", "Weak runs must receive a C rank.");
 
         var go = new GameObject("Health validation");
         try

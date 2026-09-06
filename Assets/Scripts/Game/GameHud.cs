@@ -132,7 +132,9 @@ public sealed class GameHud : MonoBehaviour
         title.text = won ? "SECURED" : lost ? "SIGNAL LOST" : session.State == SessionState.Paused ? "ON HOLD" : session.missionName;
         title.fontSize = lost ? 62 : 76;
         subtitle.text = won ? session.victoryDescription : lost ? "Your position has been overrun.\nRegroup and try another approach." : session.State == SessionState.Paused ? "Operation paused.\nTake a breath. Choose your next move." : session.missionDescription;
-        stats.text = $"BEST  {session.BestScore:000000}" + (session.Wave > 0 ? $"     SCORE  {session.Score:000000}\n{session.Kills} ELIMINATED / WAVE {session.Wave}" : "\n30-ROUND RIFLE / FIELD SUPPLIES AVAILABLE");
+        stats.text = won
+            ? $"RANK  {session.PerformanceRank}     SCORE  {session.Score:000000}     BEST  {session.BestScore:000000}\n{session.Accuracy:0}% ACCURACY  /  {FormatTime(session.Elapsed)}  /  {session.Kills} ELIMINATED"
+            : $"BEST  {session.BestScore:000000}" + (session.Wave > 0 ? $"     SCORE  {session.Score:000000}\n{session.Kills} ELIMINATED / WAVE {session.Wave} / {session.Accuracy:0}% ACC" : "\n30-ROUND RIFLE / FIELD SUPPLIES AVAILABLE");
         actionLabel.text = session.State == SessionState.Menu ? "DEPLOY  >" : session.State == SessionState.Paused ? "RESUME  >" : won && session.HasNextMission ? "NEXT OPERATION  >" : won ? "REDEPLOY  >" : "TRY AGAIN  >";
         StyleDifficulty(recruitButton, session.Difficulty == Difficulty.Recruit);
         StyleDifficulty(operatorButton, session.Difficulty == Difficulty.Operator);
@@ -142,6 +144,7 @@ public sealed class GameHud : MonoBehaviour
         {
             missionButtons[i].interactable = session.State == SessionState.Menu && i != session.MissionIndex;
             StyleDifficulty(missionButtons[i], i == session.MissionIndex);
+            missionButtons[i].GetComponentInChildren<Text>().text = GameSession.MissionNames[i] + (GameSession.IsMissionCleared(i) ? "  [OK]" : "");
         }
         EventSystem.current?.SetSelectedGameObject(primary.gameObject);
     }
@@ -177,6 +180,7 @@ public sealed class GameHud : MonoBehaviour
         hitUntil = Time.unscaledTime + 0.15f;
     }
     private void OnDamage(float amount) => damageAlpha = 0.24f;
+    private static string FormatTime(float seconds) => $"{Mathf.FloorToInt(seconds / 60f):00}:{Mathf.FloorToInt(seconds % 60f):00}";
     private void OnDestroy()
     {
         if (session == null) return;

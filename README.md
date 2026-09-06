@@ -28,6 +28,8 @@ Choose a threat level before deployment. Recruit fields fewer, softer enemies an
 
 Enemy formations evolve across a run: fast green **Runners** enter from wave two, armored red **Juggernauts** from wave three, and long-range blue **Marksmen** from wave four. Their silhouettes, shoulder colors, health, movement, projectile speed, damage and score value are distinct; the tactical HUD reports special threats still alive.
 
+Each victory records a per-map, per-difficulty best score and awards a performance rank from C to S using accuracy, remaining health, completion time and threat level. Cleared operations are marked directly on the campaign selector.
+
 ## Editor tools
 
 The `GunQuest` menu contains the supported project workflows:

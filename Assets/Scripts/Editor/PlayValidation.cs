@@ -13,6 +13,7 @@ public static class PlayValidation
 {
     private const string RunningKey = "GunQuest.Validation.Running";
     private const string ValidationBestKey = "GunQuest.BestScore.Outpost.Operator";
+    private const string ValidationClearedKey = "GunQuest.Cleared.Outpost";
     private static int stage;
     private static double stageAt;
     private static double startedAt;
@@ -47,6 +48,7 @@ public static class PlayValidation
         CoreValidation.Run();
         EditorSceneManager.OpenScene(OutpostBuilder.ScenePath);
         UnityEditor.SessionState.SetInt("GunQuest.Validation.Best", PlayerPrefs.GetInt(ValidationBestKey, 0));
+        UnityEditor.SessionState.SetInt("GunQuest.Validation.Cleared", PlayerPrefs.GetInt(ValidationClearedKey, 0));
         UnityEditor.SessionState.SetInt("GunQuest.Validation.Difficulty", PlayerPrefs.GetInt("GunQuest.Difficulty", 1));
         PlayerPrefs.SetInt("GunQuest.Difficulty", 1);
         UnityEditor.SessionState.SetBool(RunningKey, true);
@@ -176,6 +178,8 @@ public static class PlayValidation
                     if (session.State == PlayState.Victory)
                     {
                         Check(session.Kills == 40 && session.Wave == 5, "All five waves must contain forty total enemies.");
+                        Check(session.ShotsFired == 2 && session.ShotsHit == 1 && Mathf.Approximately(session.Accuracy, 50f), "Mission stats must track fired and connected shots.");
+                        Check(GameSession.IsMissionCleared(0), "Victory must mark the active mission as cleared.");
                         Capture("victory");
                         session.Restart();
                         session = null;
@@ -264,6 +268,7 @@ public static class PlayValidation
     {
         UnityEditor.SessionState.SetBool(RunningKey, false);
         PlayerPrefs.SetInt(ValidationBestKey, UnityEditor.SessionState.GetInt("GunQuest.Validation.Best", 0));
+        PlayerPrefs.SetInt(ValidationClearedKey, UnityEditor.SessionState.GetInt("GunQuest.Validation.Cleared", 0));
         PlayerPrefs.SetInt("GunQuest.Difficulty", UnityEditor.SessionState.GetInt("GunQuest.Validation.Difficulty", 1));
         PlayerPrefs.Save();
         EditorApplication.update -= Tick;

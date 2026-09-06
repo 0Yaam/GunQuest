@@ -33,6 +33,10 @@ public sealed class GameSession : MonoBehaviour
     public int Wave { get; private set; }
     public int Score { get; private set; }
     public int Kills { get; private set; }
+    public int ShotsFired { get; private set; }
+    public int ShotsHit { get; private set; }
+    public float Accuracy => ShotsFired > 0 ? ShotsHit * 100f / ShotsFired : 0f;
+    public string PerformanceRank => State == SessionState.Victory ? CalculateRank(Accuracy, player.GetCurrentHealth(), Elapsed, Difficulty) : "--";
     public int BestScore { get; private set; }
     public Difficulty Difficulty { get; private set; }
     public int MissionIndex
@@ -72,6 +76,8 @@ public sealed class GameSession : MonoBehaviour
         Difficulty = (Difficulty)Mathf.Clamp(PlayerPrefs.GetInt("GunQuest.Difficulty", 1), 0, 2);
         LoadBestScore();
         player.Died += OnPlayerDied;
+        weapon.Fired += OnWeaponFired;
+        weapon.Hit += OnWeaponHit;
         SetState(SessionState.Menu);
     }
 
@@ -85,6 +91,19 @@ public sealed class GameSession : MonoBehaviour
     }
 
     private void LoadBestScore() => BestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
+    public static bool IsMissionCleared(int index) => index >= 0 && index < MissionScenes.Length && PlayerPrefs.GetInt("GunQuest.Cleared." + MissionScenes[index], 0) == 1;
+
+    public static string CalculateRank(float accuracy, float health, float seconds, Difficulty difficulty)
+    {
+        float rating = Mathf.Clamp(accuracy, 0f, 100f) * 0.55f + Mathf.Clamp(health, 0f, 100f) * 0.35f;
+        rating += seconds <= 150f ? 10f : seconds <= 240f ? 6f : seconds <= 360f ? 3f : 0f;
+        if (difficulty == Difficulty.Veteran) rating += 5f;
+        else if (difficulty == Difficulty.Recruit) rating -= 4f;
+        if (rating >= 82f) return "S";
+        if (rating >= 68f) return "A";
+        if (rating >= 52f) return "B";
+        return "C";
+    }
 
     public static int EnemyCountForWave(Difficulty difficulty, int wave)
     {
@@ -227,18 +246,25 @@ public sealed class GameSession : MonoBehaviour
     }
 
     public void Announce(string message) { Notice = message; noticeUntil = Time.time + 4f; }
+    private void OnWeaponFired() => ShotsFired++;
+    private void OnWeaponHit(bool killed) => ShotsHit++;
     private void OnPlayerDied() => Finish(SessionState.Defeat);
 
     private void Finish(SessionState result)
     {
         if (State == SessionState.Victory || State == SessionState.Defeat) return;
-        if (result == SessionState.Victory) Score += Mathf.RoundToInt(player.GetCurrentHealth() * 10f);
+        if (result == SessionState.Victory)
+        {
+            Score += Mathf.RoundToInt(player.GetCurrentHealth() * 10f);
+            PlayerPrefs.SetInt("GunQuest.Cleared." + SceneManager.GetActiveScene().name, 1);
+            if (!HasNextMission) PlayerPrefs.SetInt("GunQuest.CampaignComplete", 1);
+        }
         if (Score > BestScore)
         {
             BestScore = Score;
             PlayerPrefs.SetInt(BestScoreKey, BestScore);
-            PlayerPrefs.Save();
         }
+        PlayerPrefs.Save();
         SetState(result);
     }
 
@@ -303,6 +329,11 @@ public sealed class GameSession : MonoBehaviour
     private void OnDestroy()
     {
         if (player != null) player.Died -= OnPlayerDied;
+        if (weapon != null)
+        {
+            weapon.Fired -= OnWeaponFired;
+            weapon.Hit -= OnWeaponHit;
+        }
         foreach (var enemy in enemies) if (enemy != null) enemy.Died -= OnEnemyDied;
         Time.timeScale = 1f;
         Cursor.lockState = CursorLockMode.None;
