@@ -9,7 +9,10 @@ EditorBuildSettings:
     path: Assets/Scenes/Outpost.unity
     guid: ece2a122295803b4a981da890233342e
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/Blackwood.unity
+    guid: 161f0f40e9dc35c4ead283e37aacb9a4
+  - enabled: 1
+    path: Assets/Scenes/Skyline.unity
+    guid: cae04bf1b5c2c5745a776134b4a19338
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

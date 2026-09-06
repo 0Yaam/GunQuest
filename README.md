@@ -1,10 +1,14 @@
-# GunQuest: Outpost
+# GunQuest
 
-GunQuest is a compact first-person survival shooter built with Unity 6 and URP. The playable **Outpost** operation asks one operator to hold an arena against five increasingly aggressive waves.
+GunQuest is a compact first-person survival campaign built with Unity 6 and URP. One operator fights through three distinct five-wave operations:
+
+- **Outpost** — a bright military relay with open firing lanes and modular cover.
+- **Blackwood** — a fogbound ancient village built around a corrupted spirit shrine.
+- **Skyline** — a neon midnight district of streets, vehicles and hostile crossfire.
 
 ## Play
 
-Open the project with Unity `6000.4.8f1`, load `Assets/Scenes/Outpost.unity`, and enter Play Mode. You can also launch the prebuilt Windows version at `Builds/Windows/GunQuest.exe` after running the build command below.
+Open the project with Unity `6000.4.8f1`, load any scene in `Assets/Scenes`, and enter Play Mode. The deployment screen can switch between all three operations, and victory advances to the next mission. You can also launch the prebuilt Windows version at `Builds/Windows/GunQuest.exe` after running the build command below.
 
 | Input | Action |
 | --- | --- |
@@ -18,7 +22,7 @@ Open the project with Unity `6000.4.8f1`, load `Assets/Scenes/Outpost.unity`, an
 | Space / south button | Jump |
 | Escape / Start | Pause |
 
-Health and ammunition caches respawn around the arena. Clearing a wave restores 20 health and supplies 60 reserve rounds.
+Health and ammunition caches are positioned along each arena's riskier routes. Clearing a wave restores 20 health and supplies 60 reserve rounds.
 
 Choose a threat level before deployment. Recruit fields fewer, softer enemies and provides generous resupply. Operator is the balanced default. Veteran increases enemy count, speed, durability and score rewards while reducing between-wave supplies.
 
@@ -26,16 +30,18 @@ Choose a threat level before deployment. Recruit fields fewer, softer enemies an
 
 The `GunQuest` menu contains the supported project workflows:
 
-- `Outpost / Generate playable outpost` regenerates the scene, materials, enemy prefab and baked NavMesh.
+- `Outpost / Generate playable outpost` regenerates all three campaign scenes, materials, enemy prefab and baked NavMeshes.
 - `Outpost / Build Windows player` creates `Builds/Windows/GunQuest.exe`.
 - `Validation / Validate combat rules` verifies ammo conservation and health/death rules.
 - `Validation / Run outpost play checks` exercises navigation, combat, cover, pause, all five waves, victory, restart and defeat in Play Mode.
+- `Validation / Run campaign scene checks` opens every operation in Play Mode and verifies metadata, player placement, hostile entrances, navigation and wave-one spawning.
 
 Equivalent headless commands from PowerShell:
 
 ```powershell
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -nographics -quit -projectPath . -executeMethod CoreValidation.Run -logFile Logs/core-validation.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod PlayValidation.Run -logFile Logs/play-validation.log
+& 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod CampaignValidation.Run -logFile Logs/campaign-validation.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -nographics -quit -projectPath . -executeMethod OutpostBuilder.BuildWindows -logFile Logs/windows-build.log
 ```
 

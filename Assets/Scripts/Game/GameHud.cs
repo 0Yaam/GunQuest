@@ -21,6 +21,7 @@ public sealed class GameHud : MonoBehaviour
     private static readonly Color Teal = new Color(0.28f, 0.94f, 0.79f);
     private static readonly Color Muted = new Color(0.58f, 0.68f, 0.71f);
     private static readonly Color Dark = new Color(0.025f, 0.05f, 0.065f, 0.93f);
+    private Color Accent => session != null ? session.missionAccent : Teal;
 
     private void Start()
     {
@@ -39,31 +40,31 @@ public sealed class GameHud : MonoBehaviour
         hud = Panel("HUD", canvas, Vector2.zero, new Vector2(1600, 900), Color.clear).gameObject;
         var h = hud.GetComponent<RectTransform>();
         Panel("Mission", h, new Vector2(40, 32), new Vector2(340, 108), Dark);
-        missionHud = Label("", h, 60, 48, 300, 24, 16, Teal);
+        missionHud = Label("", h, 60, 48, 300, 24, 16, Accent);
         wave = Label("", h, 60, 78, 300, 38, 28, Color.white);
         Panel("Score", h, new Vector2(1280, 32), new Vector2(280, 108), Dark);
         score = Label("", h, 1300, 47, 240, 75, 23, Color.white, TextAnchor.MiddleRight);
-        notice = Label("", h, 400, 165, 800, 42, 23, Teal, TextAnchor.MiddleCenter);
+        notice = Label("", h, 400, 165, 800, 42, 23, Accent, TextAnchor.MiddleCenter);
         hint = Label("", h, 500, 208, 600, 32, 18, Muted, TextAnchor.MiddleCenter);
         Panel("Vitals", h, new Vector2(40, 772), new Vector2(300, 90), Dark);
         Label("VITALS", h, 60, 785, 100, 22, 14, Muted);
         health = Label("", h, 172, 779, 145, 37, 27, Color.white, TextAnchor.MiddleRight);
         Panel("Health track", h, new Vector2(60, 829), new Vector2(258, 7), new Color(0.2f, 0.25f, 0.27f));
-        healthFill = Panel("Health fill", h, new Vector2(60, 829), new Vector2(258, 7), Teal).GetComponent<Image>();
+        healthFill = Panel("Health fill", h, new Vector2(60, 829), new Vector2(258, 7), Accent).GetComponent<Image>();
         Panel("Weapon", h, new Vector2(1220, 755), new Vector2(340, 107), Dark);
-        Label("GQ-30 / AUTOMATIC", h, 1240, 768, 290, 22, 14, Teal);
+        Label("GQ-30 / AUTOMATIC", h, 1240, 768, 290, 22, 14, Accent);
         ammo = Label("", h, 1240, 795, 290, 44, 32, Color.white, TextAnchor.MiddleRight);
-        reloadFill = Panel("Reload", h, new Vector2(1240, 846), new Vector2(0, 4), Teal).GetComponent<Image>();
+        reloadFill = Panel("Reload", h, new Vector2(1240, 846), new Vector2(0, 4), Accent).GetComponent<Image>();
         Label("WASD move   SHIFT sprint   CTRL crouch   SPACE jump   RMB aim   R reload   ESC pause", h, 370, 850, 820, 24, 14, Muted, TextAnchor.MiddleCenter);
         Panel("Crosshair horizontal", h, new Vector2(792, 449), new Vector2(16, 2), new Color(1, 1, 1, 0.75f));
         Panel("Crosshair vertical", h, new Vector2(799, 442), new Vector2(2, 16), new Color(1, 1, 1, 0.75f));
-        hitMarker = Label("", h, 775, 425, 50, 50, 38, Teal, TextAnchor.MiddleCenter);
+        hitMarker = Label("", h, 775, 425, 50, 50, 38, Accent, TextAnchor.MiddleCenter);
         damageOverlay = Panel("Damage feedback", h, Vector2.zero, new Vector2(1600, 900), Color.clear).GetComponent<Image>();
 
         menu = Panel("Menu", canvas, Vector2.zero, new Vector2(680, 900), Dark).gameObject;
         var m = menu.GetComponent<RectTransform>();
-        Panel("Accent", m, new Vector2(56, 62), new Vector2(44, 4), Teal);
-        Label("G U N Q U E S T", m, 116, 46, 440, 36, 18, Teal);
+        Panel("Accent", m, new Vector2(56, 62), new Vector2(44, 4), Accent);
+        Label("G U N Q U E S T", m, 116, 46, 440, 36, 18, Accent);
         operationLine = Label("", m, 56, 99, 560, 25, 14, Muted);
         missionButtons = new Button[GameSession.MissionNames.Length];
         for (int i = 0; i < missionButtons.Length; i++)
@@ -73,12 +74,12 @@ public sealed class GameHud : MonoBehaviour
         }
         title = Label("", m, 50, 184, 580, 92, 70, Color.white);
         subtitle = Label("", m, 56, 282, 552, 86, 21, Muted);
-        stats = Label("", m, 56, 374, 552, 62, 19, Teal);
+        stats = Label("", m, 56, 374, 552, 62, 19, Accent);
         Label("THREAT LEVEL", m, 56, 449, 290, 22, 14, Muted);
         recruitButton = MakeButton("RECRUIT", m, 56, 478, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Recruit));
         operatorButton = MakeButton("OPERATOR", m, 244, 478, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Operator));
         veteranButton = MakeButton("VETERAN", m, 432, 478, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Veteran));
-        primary = MakeButton("Deploy", m, 56, 540, 550, 60, Teal, OnPrimary);
+        primary = MakeButton("Deploy", m, 56, 540, 550, 60, Accent, OnPrimary);
         actionLabel = primary.GetComponentInChildren<Text>();
         MakeButton("RESTART OPERATION", m, 56, 614, 265, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Restart());
         MakeButton("EXIT", m, 337, 614, 269, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Quit());
@@ -86,7 +87,7 @@ public sealed class GameHud : MonoBehaviour
         var sliderRoot = Panel("Sensitivity", m, new Vector2(56, 734), new Vector2(550, 8), new Color(0.2f, 0.28f, 0.3f));
         var slider = sliderRoot.gameObject.AddComponent<Slider>();
         sliderRoot.GetComponent<Image>().raycastTarget = true;
-        var handle = Panel("Handle", sliderRoot, new Vector2(0, -7), new Vector2(16, 22), Teal);
+        var handle = Panel("Handle", sliderRoot, new Vector2(0, -7), new Vector2(16, 22), Accent);
         slider.handleRect = handle;
         slider.targetGraphic = handle.GetComponent<Image>();
         handle.GetComponent<Image>().raycastTarget = true;
@@ -145,9 +146,9 @@ public sealed class GameHud : MonoBehaviour
         EventSystem.current?.SetSelectedGameObject(primary.gameObject);
     }
 
-    private static void StyleDifficulty(Button button, bool selected)
+    private void StyleDifficulty(Button button, bool selected)
     {
-        button.targetGraphic.color = selected ? Teal : new Color(0.11f, 0.17f, 0.19f);
+        button.targetGraphic.color = selected ? Accent : new Color(0.11f, 0.17f, 0.19f);
         button.GetComponentInChildren<Text>().color = selected ? Dark : Color.white;
     }
 
@@ -159,7 +160,7 @@ public sealed class GameHud : MonoBehaviour
         float hp = session.player.GetCurrentHealth();
         health.text = $"{Mathf.CeilToInt(hp):000} / 100";
         healthFill.rectTransform.sizeDelta = new Vector2(258f * hp / session.player.maxHealth, 7);
-        healthFill.color = hp <= 30 ? new Color(1f, 0.3f, 0.2f) : Teal;
+        healthFill.color = hp <= 30 ? new Color(1f, 0.3f, 0.2f) : Accent;
         ammo.text = session.weapon.IsReloading ? "RELOADING" : $"{session.weapon.Ammo.Loaded:00} <color=#778E95>/ {session.weapon.Ammo.Reserve:000}</color>";
         reloadFill.rectTransform.sizeDelta = new Vector2(300f * session.weapon.ReloadProgress, 4f);
         notice.text = session.Notice;
@@ -172,7 +173,7 @@ public sealed class GameHud : MonoBehaviour
     private void OnHit(bool kill)
     {
         hitMarker.text = "X";
-        hitMarker.color = kill ? new Color(1f, 0.55f, 0.2f) : Teal;
+        hitMarker.color = kill ? new Color(1f, 0.55f, 0.2f) : Accent;
         hitUntil = Time.unscaledTime + 0.15f;
     }
     private void OnDamage(float amount) => damageAlpha = 0.24f;
@@ -223,7 +224,7 @@ public sealed class GameHud : MonoBehaviour
         var button = rect.gameObject.AddComponent<Button>();
         button.targetGraphic = rect.GetComponent<Image>();
         button.onClick.AddListener(action);
-        Label(text, rect, 18, 0, w - 36, h, 19, color == Teal ? Dark : Color.white, TextAnchor.MiddleLeft);
+        Label(text, rect, 18, 0, w - 36, h, 19, color == Teal || color == Accent ? Dark : Color.white, TextAnchor.MiddleLeft);
         return button;
     }
 }
