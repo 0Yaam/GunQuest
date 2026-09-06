@@ -5,15 +5,19 @@ public class DamageTest : MonoBehaviour
     [SerializeField]
     private float damageAmount = 15f;
     [SerializeField]
+    private bool heals;
+    [SerializeField]
     private float healAmount = 20f;
 
-    // Damage is applied when the player walks into this trigger zone.
-    // To test healing, call RestoreHealth() directly from another script or event.
+    public void Configure(bool asHealingZone) => heals = asHealingZone;
+
+    // Apply one configured effect when the player enters this tutorial trigger.
     void OnTriggerEnter(Collider other)
     {
         if (other.TryGetComponent<PlayerHealth>(out PlayerHealth health))
         {
-            health.TakeDamage(damageAmount);
+            if (heals) health.RestoreHealth(healAmount);
+            else health.TakeDamage(damageAmount);
         }
     }
 }

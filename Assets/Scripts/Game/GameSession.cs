@@ -8,6 +8,7 @@ using GunQuest.Game;
 namespace GunQuest.Game
 {
     public enum SessionState { Menu, Playing, Paused, Victory, Defeat }
+    public enum Difficulty { Recruit, Operator, Veteran }
 }
 
 public sealed class GameSession : MonoBehaviour
@@ -22,6 +23,7 @@ public sealed class GameSession : MonoBehaviour
     public int Score { get; private set; }
     public int Kills { get; private set; }
     public int BestScore { get; private set; }
+    public Difficulty Difficulty { get; private set; }
     public int EnemiesRemaining => enemies.Count;
     public float NextWaveIn => Mathf.Max(0f, waveAt - Time.time);
     public float Elapsed { get; private set; }
@@ -34,8 +36,28 @@ public sealed class GameSession : MonoBehaviour
     private void Awake()
     {
         BestScore = PlayerPrefs.GetInt("GunQuest.BestScore", 0);
+        Difficulty = (Difficulty)Mathf.Clamp(PlayerPrefs.GetInt("GunQuest.Difficulty", 1), 0, 2);
         player.Died += OnPlayerDied;
         SetState(SessionState.Menu);
+    }
+
+    public void SetDifficulty(Difficulty value)
+    {
+        if (State != SessionState.Menu) return;
+        Difficulty = value;
+        PlayerPrefs.SetInt("GunQuest.Difficulty", (int)value);
+        StateChanged?.Invoke();
+    }
+
+    public static int EnemyCountForWave(Difficulty difficulty, int wave)
+    {
+        wave = Mathf.Max(1, wave);
+        return difficulty switch
+        {
+            Difficulty.Recruit => 2 + wave,
+            Difficulty.Veteran => 2 + wave * 3,
+            _ => 2 + wave * 2
+        };
     }
 
     public void StartRun()
@@ -62,7 +84,8 @@ public sealed class GameSession : MonoBehaviour
     {
         if (Wave >= totalWaves) { Finish(SessionState.Victory); return; }
         Wave++;
-        int count = 2 + Wave * 2;
+        int count = EnemyCountForWave(Difficulty, Wave);
+        float difficultyScale = Difficulty == Difficulty.Recruit ? 0.78f : Difficulty == Difficulty.Veteran ? 1.28f : 1f;
         for (int i = 0; i < count; i++)
         {
             // Prefer distant entrances so a wave never materializes beside the player.
@@ -78,10 +101,10 @@ public sealed class GameSession : MonoBehaviour
             if (spawn == null || !NavMesh.SamplePosition(spawn.position + new Vector3(i % 2, 0f, i / 2), out var hit, 5f, NavMesh.AllAreas)) continue;
             var enemy = Instantiate(enemyPrefab, hit.position, spawn.rotation);
             enemy.huntPlayer = true;
-            enemy.fireRate = Mathf.Max(0.65f, 1.8f - Wave * 0.15f);
-            enemy.Agent.speed = 2.5f + Wave * 0.2f;
+            enemy.fireRate = Mathf.Max(0.5f, (1.8f - Wave * 0.15f) / difficultyScale);
+            enemy.Agent.speed = (2.5f + Wave * 0.2f) * Mathf.Lerp(0.9f, 1.08f, (difficultyScale - 0.78f) / 0.5f);
             var health = enemy.GetComponent<EnemyHealth>();
-            health.Configure(68f + Wave * 9f);
+            health.Configure((68f + Wave * 9f) * difficultyScale);
             health.Died += OnEnemyDied;
             enemies.Add(health);
         }
@@ -99,14 +122,17 @@ public sealed class GameSession : MonoBehaviour
         enemy.Died -= OnEnemyDied;
         if (!enemies.Remove(enemy) || State != SessionState.Playing) return;
         Kills++;
-        Score += 100 + Wave * 25;
+        float scoreMultiplier = Difficulty == Difficulty.Recruit ? 0.75f : Difficulty == Difficulty.Veteran ? 1.5f : 1f;
+        Score += Mathf.RoundToInt((100 + Wave * 25) * scoreMultiplier);
         if (enemies.Count > 0) return;
-        Score += 250;
+        Score += Mathf.RoundToInt(250 * scoreMultiplier);
         if (Wave >= totalWaves) { Finish(SessionState.Victory); return; }
-        player.RestoreHealth(20f);
-        weapon.Ammo.Supply(60);
+        float healthReward = Difficulty == Difficulty.Veteran ? 12f : Difficulty == Difficulty.Recruit ? 30f : 20f;
+        int ammoReward = Difficulty == Difficulty.Veteran ? 45 : Difficulty == Difficulty.Recruit ? 90 : 60;
+        player.RestoreHealth(healthReward);
+        weapon.Ammo.Supply(ammoReward);
         waveAt = Time.time + 7f;
-        Announce("SECTOR CLEAR / +20 health  +60 reserve ammo");
+        Announce($"SECTOR CLEAR / +{healthReward:0} health  +{ammoReward} reserve ammo");
     }
 
     public void Announce(string message) { Notice = message; noticeUntil = Time.time + 4f; }

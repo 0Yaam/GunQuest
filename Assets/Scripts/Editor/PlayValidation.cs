@@ -28,8 +28,15 @@ public static class PlayValidation
     static PlayValidation()
     {
         if (!UnityEditor.SessionState.GetBool(RunningKey, false)) return;
+        BeginWatching();
+    }
+
+    private static void BeginWatching()
+    {
         stageAt = startedAt = EditorApplication.timeSinceStartup;
+        EditorApplication.update -= Tick;
         EditorApplication.update += Tick;
+        Application.logMessageReceived -= OnLog;
         Application.logMessageReceived += OnLog;
     }
 
@@ -39,7 +46,10 @@ public static class PlayValidation
         CoreValidation.Run();
         EditorSceneManager.OpenScene(OutpostBuilder.ScenePath);
         UnityEditor.SessionState.SetInt("GunQuest.Validation.Best", PlayerPrefs.GetInt("GunQuest.BestScore", 0));
+        UnityEditor.SessionState.SetInt("GunQuest.Validation.Difficulty", PlayerPrefs.GetInt("GunQuest.Difficulty", 1));
+        PlayerPrefs.SetInt("GunQuest.Difficulty", 1);
         UnityEditor.SessionState.SetBool(RunningKey, true);
+        BeginWatching();
         EditorApplication.EnterPlaymode();
     }
 
@@ -62,12 +72,16 @@ public static class PlayValidation
             if (EditorApplication.timeSinceStartup - startedAt > 110) throw new Exception("Play validation timed out at stage " + stage);
             if (failed) throw new Exception("Runtime logged an error; inspect the preceding log.");
             double wait = EditorApplication.timeSinceStartup - stageAt;
-            if (session == null) session = UnityEngine.Object.FindFirstObjectByType<GameSession>();
+            if (session == null) session = UnityEngine.Object.FindAnyObjectByType<GameSession>();
             if (session == null || wait < 0.25) return;
             switch (stage)
             {
                 case 0:
                     Check(session.State == PlayState.Menu && Time.timeScale == 0, "Scene must begin at the deployment menu.");
+                    Check(session.Difficulty == GunQuest.Game.Difficulty.Operator, "Operator must be the deterministic validation profile.");
+                    session.SetDifficulty(GunQuest.Game.Difficulty.Recruit);
+                    Check(session.Difficulty == GunQuest.Game.Difficulty.Recruit, "Menu must allow threat-level changes.");
+                    session.SetDifficulty(GunQuest.Game.Difficulty.Operator);
                     Capture("menu");
                     session.StartRun();
                     session.player.GetComponent<InputManager>().enabled = false;
@@ -76,7 +90,7 @@ public static class PlayValidation
                 case 1:
                     if (session.Wave == 0) return;
                     Check(session.Wave == 1 && session.EnemiesRemaining == 4, "First wave must spawn four enemies.");
-                    trackedEnemy = UnityEngine.Object.FindFirstObjectByType<Enemy>();
+                    trackedEnemy = UnityEngine.Object.FindAnyObjectByType<Enemy>();
                     Check(trackedEnemy.Agent.isOnNavMesh, "Enemy must spawn on baked navigation.");
                     enemyPosition = trackedEnemy.transform.position;
                     Next();
@@ -93,7 +107,7 @@ public static class PlayValidation
                 case 3:
                     Check(Time.time == pausedTime && session.State == PlayState.Paused, "Pause must freeze simulation time.");
                     session.TogglePause();
-                    foreach (var enemy in UnityEngine.Object.FindObjectsByType<Enemy>(FindObjectsSortMode.None))
+                    foreach (var enemy in UnityEngine.Object.FindObjectsByType<Enemy>())
                     {
                         enemy.enabled = false;
                         enemy.GetComponent<StateMachine>().enabled = false;
@@ -196,7 +210,7 @@ public static class PlayValidation
 
     private static void ClearWave()
     {
-        foreach (var enemy in UnityEngine.Object.FindObjectsByType<EnemyHealth>(FindObjectsSortMode.None)) enemy.TakeDamage(10000);
+        foreach (var enemy in UnityEngine.Object.FindObjectsByType<EnemyHealth>()) enemy.TakeDamage(10000);
     }
 
     private static void Capture(string name)
@@ -204,7 +218,7 @@ public static class PlayValidation
         if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
         Directory.CreateDirectory("Logs/Screenshots");
         var cam = session.weapon.aimCamera;
-        var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>();
+        var canvas = UnityEngine.Object.FindAnyObjectByType<Canvas>();
         var texture = new RenderTexture(1600, 900, 24);
         var previous = RenderTexture.active;
         var oldTarget = cam.targetTexture;
@@ -231,6 +245,7 @@ public static class PlayValidation
     {
         UnityEditor.SessionState.SetBool(RunningKey, false);
         PlayerPrefs.SetInt("GunQuest.BestScore", UnityEditor.SessionState.GetInt("GunQuest.Validation.Best", 0));
+        PlayerPrefs.SetInt("GunQuest.Difficulty", UnityEditor.SessionState.GetInt("GunQuest.Validation.Difficulty", 1));
         PlayerPrefs.Save();
         EditorApplication.update -= Tick;
         Application.logMessageReceived -= OnLog;

@@ -319,7 +319,7 @@ public static class OutpostBuilder
             scenes = new[] { ScenePath },
             locationPathName = "Builds/Windows/GunQuest.exe",
             target = BuildTarget.StandaloneWindows64,
-            options = BuildOptions.Development
+            options = BuildOptions.None
         });
         if (report.summary.result != BuildResult.Succeeded) throw new System.Exception("Windows build failed: " + report.summary.result);
         Debug.Log("GUNQUEST WINDOWS BUILD PASSED: " + report.summary.totalSize + " bytes");

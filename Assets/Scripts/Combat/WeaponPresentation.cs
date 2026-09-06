@@ -9,6 +9,8 @@ public sealed class WeaponPresentation : MonoBehaviour
     private AudioSource audioSource;
     private AudioClip shotClip, hitClip;
     private float recoil;
+    private float muzzleUntil;
+    private Light muzzleLight;
     private Vector3 home;
 
     private void Start()
@@ -21,6 +23,11 @@ public sealed class WeaponPresentation : MonoBehaviour
         shotClip = Tone("Rifle shot", 0.15f, 90f, true);
         hitClip = Tone("Hit confirmation", 0.08f, 900f, false);
         home = viewModel.localPosition;
+        muzzleLight = weapon.muzzle.gameObject.AddComponent<Light>();
+        muzzleLight.type = LightType.Point;
+        muzzleLight.color = new Color(0.3f, 1f, 0.85f);
+        muzzleLight.range = 4f;
+        muzzleLight.intensity = 0f;
         weapon.Fired += OnFired;
         weapon.Hit += OnHit;
     }
@@ -29,6 +36,7 @@ public sealed class WeaponPresentation : MonoBehaviour
     {
         if (Time.timeScale == 0f) return;
         recoil = Mathf.MoveTowards(recoil, 0f, Time.deltaTime * 7f);
+        muzzleLight.intensity = Time.unscaledTime < muzzleUntil ? 5f : 0f;
         bool aiming = input.IsAiming;
         float bob = controller.isGrounded ? Mathf.Min(controller.velocity.magnitude, 8f) * 0.0015f : 0f;
         Vector3 target = aiming ? new Vector3(0f, -0.19f, home.z + 0.08f) : home;
@@ -41,7 +49,7 @@ public sealed class WeaponPresentation : MonoBehaviour
         weapon.aimCamera.transform.localPosition = cameraPosition;
     }
 
-    private void OnFired() { recoil = 1f; audioSource.pitch = Random.Range(0.95f, 1.05f); audioSource.PlayOneShot(shotClip); }
+    private void OnFired() { recoil = 1f; muzzleUntil = Time.unscaledTime + 0.045f; audioSource.pitch = Random.Range(0.95f, 1.05f); audioSource.PlayOneShot(shotClip); }
     private void OnHit(bool killed) => audioSource.PlayOneShot(hitClip, killed ? 0.7f : 0.4f);
 
     private static AudioClip Tone(string name, float duration, float frequency, bool noise)

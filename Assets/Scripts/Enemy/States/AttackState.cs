@@ -5,12 +5,14 @@ public class AttackState : BaseState
     private float moveTimer;
     private float losePlayerTimer;
     private float shotTimer;
+    private float nextMoveAt;
 
     public override void Enter()
     {
         shotTimer = 0f;
         losePlayerTimer = 0f;
         moveTimer = 0f;
+        nextMoveAt = Random.Range(2f, 4f);
     }
 
     public override void Perform()
@@ -46,13 +48,14 @@ public class AttackState : BaseState
 
             // Reposition / move towards player occasionally
             moveTimer += Time.deltaTime;
-            if (moveTimer > Random.Range(2f, 4f))
+            if (moveTimer > nextMoveAt)
             {
                 if (enemy.Agent.isOnNavMesh)
                 {
                     enemy.Agent.SetDestination(enemy.Player.transform.position);
                 }
                 moveTimer = 0f;
+                nextMoveAt = Random.Range(2f, 4f);
             }
         }
         else

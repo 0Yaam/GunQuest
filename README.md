@@ -20,6 +20,8 @@ Open the project with Unity `6000.4.8f1`, load `Assets/Scenes/Outpost.unity`, an
 
 Health and ammunition caches respawn around the arena. Clearing a wave restores 20 health and supplies 60 reserve rounds.
 
+Choose a threat level before deployment. Recruit fields fewer, softer enemies and provides generous resupply. Operator is the balanced default. Veteran increases enemy count, speed, durability and score rewards while reducing between-wave supplies.
+
 ## Editor tools
 
 The `GunQuest` menu contains the supported project workflows:

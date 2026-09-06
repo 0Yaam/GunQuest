@@ -45,7 +45,7 @@ public class Enemy : MonoBehaviour
     void Start()
     {
         // Find player in scene if not assigned
-        PlayerMotor playerMotor = Object.FindFirstObjectByType<PlayerMotor>();
+        PlayerMotor playerMotor = Object.FindAnyObjectByType<PlayerMotor>();
         if (playerMotor != null)
         {
             player = playerMotor.gameObject;

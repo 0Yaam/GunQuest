@@ -26,7 +26,7 @@ public class PlayerInteract : MonoBehaviour
 
         if (playerUI == null)
         {
-            playerUI = Object.FindFirstObjectByType<PlayerUI>();
+            playerUI = Object.FindAnyObjectByType<PlayerUI>();
         }
     }
 

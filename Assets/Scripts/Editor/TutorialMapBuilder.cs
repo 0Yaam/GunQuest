@@ -178,6 +178,7 @@ public class TutorialMapBuilder : EditorWindow
         healZone.GetComponent<MeshRenderer>().material = healMat;
         BoxCollider healCollider = healZone.GetComponent<BoxCollider>();
         healCollider.isTrigger = true;
+        healZone.AddComponent<DamageTest>().Configure(true);
 
         // 6. Obstacle & Cover Course (For AI Line of Sight & Search State)
         GameObject obstaclesRoot = new GameObject("Obstacles_And_Cover");
@@ -240,7 +241,7 @@ public class TutorialMapBuilder : EditorWindow
         GameObject player = GameObject.FindWithTag("Player");
         if (player == null)
         {
-            PlayerMotor pm = Object.FindFirstObjectByType<PlayerMotor>();
+            PlayerMotor pm = Object.FindAnyObjectByType<PlayerMotor>();
             if (pm != null) player = pm.gameObject;
         }
 
@@ -272,7 +273,7 @@ public class TutorialMapBuilder : EditorWindow
         }
         if (isStatic)
         {
-            GameObjectUtility.SetStaticEditorFlags(cube, StaticEditorFlags.NavigationStatic | StaticEditorFlags.ContributeGI);
+            GameObjectUtility.SetStaticEditorFlags(cube, StaticEditorFlags.ContributeGI);
         }
         return cube;
     }
@@ -344,7 +345,7 @@ public class TutorialMapBuilder : EditorWindow
     public static void SetupPlayerHUD()
     {
         // Find or create Canvas
-        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        Canvas canvas = Object.FindAnyObjectByType<Canvas>();
         GameObject canvasObj;
         if (canvas == null)
         {
@@ -362,7 +363,7 @@ public class TutorialMapBuilder : EditorWindow
         }
 
         // Ensure EventSystem exists
-        if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
         {
             GameObject es = new GameObject("EventSystem");
             es.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -479,7 +480,7 @@ public class TutorialMapBuilder : EditorWindow
         GameObject player = GameObject.FindWithTag("Player");
         if (player == null)
         {
-            PlayerMotor pm = Object.FindFirstObjectByType<PlayerMotor>();
+            PlayerMotor pm = Object.FindAnyObjectByType<PlayerMotor>();
             if (pm != null) player = pm.gameObject;
         }
 

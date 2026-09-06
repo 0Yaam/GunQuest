@@ -42,6 +42,6 @@ public sealed class SupplyPickup : MonoBehaviour
             weapon.Ammo.Supply(60);
         }
         availableAt = Time.time + respawnSeconds;
-        Object.FindFirstObjectByType<GameSession>()?.Announce(heals ? "MEDKIT / +35 health" : "AMMO CACHE / +60 rounds");
+        Object.FindAnyObjectByType<GameSession>()?.Announce(heals ? "MEDKIT / +35 health" : "AMMO CACHE / +60 rounds");
     }
 }
