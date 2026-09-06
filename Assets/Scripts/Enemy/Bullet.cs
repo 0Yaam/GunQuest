@@ -8,6 +8,10 @@ public class Bullet : MonoBehaviour
     private float damage = 15f;
     [SerializeField]
     private float lifeTime = 5f;
+    private Transform owner;
+    private bool consumed;
+
+    public void SetOwner(Transform value) => owner = value;
 
     void Start()
     {
@@ -16,23 +20,30 @@ public class Bullet : MonoBehaviour
 
     void Update()
     {
-        transform.position += transform.forward * speed * Time.deltaTime;
+        float distance = speed * Time.deltaTime;
+        if (distance <= 0f || consumed) return;
+        var hits = Physics.RaycastAll(transform.position, transform.forward, distance, ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (var hit in hits)
+        {
+            if (Consume(hit.collider)) return;
+        }
+        transform.position += transform.forward * distance;
     }
 
     void OnTriggerEnter(Collider other)
     {
-        // Check if hit player
-        if (other.TryGetComponent<PlayerHealth>(out PlayerHealth health))
-        {
-            health.TakeDamage(damage);
-            Destroy(gameObject);
-            return;
-        }
+        Consume(other);
+    }
 
-        // Don't collide with other bullets or triggers unless environment
-        if (!other.isTrigger)
-        {
-            Destroy(gameObject);
-        }
+    private bool Consume(Collider other)
+    {
+        if (consumed || other.isTrigger || other.transform.IsChildOf(transform) ||
+            (owner != null && other.transform.IsChildOf(owner)) || other.GetComponentInParent<Bullet>() != null) return false;
+        consumed = true;
+        var health = other.GetComponentInParent<PlayerHealth>();
+        if (health != null) health.TakeDamage(damage);
+        Destroy(gameObject);
+        return true;
     }
 }

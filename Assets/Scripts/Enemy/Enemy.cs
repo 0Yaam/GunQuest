@@ -15,6 +15,8 @@ public class Enemy : MonoBehaviour
 
     [Header("Patrol Settings")]
     public Path path;
+    public bool huntPlayer;
+    private float nextHunt;
 
     [Header("Sight Settings")]
     public float sightDistance = 20f;
@@ -37,6 +39,7 @@ public class Enemy : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         stateMachine = GetComponent<StateMachine>();
+        if (GetComponent<EnemyHealth>() == null) gameObject.AddComponent<EnemyHealth>();
     }
 
     void Start()
@@ -57,6 +60,11 @@ public class Enemy : MonoBehaviour
 
     void Update()
     {
+        if (huntPlayer && player != null && agent.isOnNavMesh && Time.time >= nextHunt && !(stateMachine.activeState is AttackState))
+        {
+            agent.SetDestination(player.transform.position);
+            nextHunt = Time.time + 0.5f;
+        }
         if (stateMachine != null && stateMachine.activeState != null)
         {
             currentState = stateMachine.activeState.ToString();
@@ -65,7 +73,7 @@ public class Enemy : MonoBehaviour
 
     public bool CanSeePlayer()
     {
-        if (player == null)
+        if (player == null || (player.TryGetComponent<PlayerHealth>(out var health) && health.IsDead))
         {
             return false;
         }
@@ -84,7 +92,7 @@ public class Enemy : MonoBehaviour
             {
                 // Raycast to check for line of sight blockage (walls, obstacles)
                 Ray ray = new Ray(eyePos, directionToPlayer.normalized);
-                if (Physics.Raycast(ray, out RaycastHit hit, sightDistance))
+                if (Physics.Raycast(ray, out RaycastHit hit, sightDistance, ~0, QueryTriggerInteraction.Ignore))
                 {
                     if (hit.transform == player.transform || hit.transform.IsChildOf(player.transform))
                     {

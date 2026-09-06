@@ -23,18 +23,19 @@ public class PlayerLook : MonoBehaviour
         }
     }
 
-    public void ProcessLook(Vector2 input)
+    public void ProcessLook(Vector2 input, bool isGamepad = false, float sensitivityMultiplier = 1f)
     {
         if (cam == null)
         {
             return;
         }
 
-        float mouseX = input.x;
-        float mouseY = input.y;
+        float scale = (isGamepad ? Time.deltaTime * 5f : 0.015f) * sensitivityMultiplier;
+        float mouseX = input.x * scale;
+        float mouseY = input.y * scale;
 
         // Tính toán xoay camera lên và xuống [9]
-        xRotation -= (mouseY * Time.deltaTime) * ySensitivity;
+        xRotation -= mouseY * ySensitivity;
         // Giới hạn góc nhìn trong khoảng -80 đến 80 độ để tránh lộn ngược [10]
         xRotation = Mathf.Clamp(xRotation, -80f, 80f);
 
@@ -42,6 +43,6 @@ public class PlayerLook : MonoBehaviour
         cam.transform.localRotation = Quaternion.Euler(xRotation, 0, 0);
 
         // Xoay toàn bộ cơ thể nhân vật để nhìn sang trái và phải [10]
-        transform.Rotate(Vector3.up * (mouseX * Time.deltaTime) * xSensitivity);
+        transform.Rotate(Vector3.up * mouseX * xSensitivity);
     }
 }

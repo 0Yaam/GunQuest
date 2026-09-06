@@ -3,6 +3,9 @@ using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour
 {
+    public event System.Action Died;
+    public event System.Action<float> Damaged;
+    public bool IsDead { get; private set; }
     private float health;
     private float lerpTimer;
 
@@ -27,8 +30,9 @@ public class PlayerHealth : MonoBehaviour
     public float fadeSpeed = 1.5f;
     private float durationTimer;
 
-    void Start()
+    void Awake()
     {
+        maxHealth = Mathf.Max(1f, maxHealth);
         health = maxHealth;
         if (overlay != null)
         {
@@ -103,7 +107,8 @@ public class PlayerHealth : MonoBehaviour
 
     public void TakeDamage(float damage)
     {
-        health -= damage;
+        if (IsDead || damage <= 0f || !float.IsFinite(damage)) return;
+        health = Mathf.Max(0f, health - damage);
         lerpTimer = 0f;
         durationTimer = 0f;
 
@@ -112,6 +117,7 @@ public class PlayerHealth : MonoBehaviour
             overlay.color = new Color(overlay.color.r, overlay.color.g, overlay.color.b, 0.8f);
         }
 
+        Damaged?.Invoke(damage);
         if (health <= 0)
         {
             Die();
@@ -120,13 +126,15 @@ public class PlayerHealth : MonoBehaviour
 
     public void RestoreHealth(float healAmount)
     {
-        health += healAmount;
+        if (IsDead || healAmount <= 0f || !float.IsFinite(healAmount)) return;
+        health = Mathf.Min(maxHealth, health + healAmount);
         lerpTimer = 0f;
     }
 
     private void Die()
     {
-        Debug.Log("Player has died!");
+        IsDead = true;
+        Died?.Invoke();
     }
 
     public float GetCurrentHealth() => health;

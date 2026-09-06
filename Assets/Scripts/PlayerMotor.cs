@@ -78,13 +78,15 @@ public class PlayerMotor : MonoBehaviour
     // Nhận đầu vào từ InputManager và áp dụng vào CharacterController [5, 8]
     public void ProcessMove(Vector2 input)
     {
+        if (!controller.enabled || Time.timeScale == 0f) return;
+        isGrounded = controller.isGrounded;
         Vector3 moveDirection = Vector3.zero;
         moveDirection.x = input.x;
         moveDirection.z = input.y;
         moveDirection = Vector3.ClampMagnitude(moveDirection, 1f);
 
         // Di chuyển nhân vật dựa trên hướng nhìn [8]
-        float currentSpeed = sprinting && !crouching ? sprintSpeed : speed;
+        float currentSpeed = crouching ? speed * 0.5f : sprinting ? sprintSpeed : speed;
         controller.Move(transform.TransformDirection(moveDirection) * currentSpeed * Time.deltaTime);
         currentMoveSpeed = moveDirection.magnitude * currentSpeed;
         UpdateMovementAnimator(input, currentSpeed);
@@ -103,7 +105,7 @@ public class PlayerMotor : MonoBehaviour
         if (isGrounded && !crouching)
         {
             // Công thức tính lực nhảy [3]
-            playerVelocity.y = Mathf.Sqrt(jumpHeight * -3.0f * gravity);
+            playerVelocity.y = Mathf.Sqrt(jumpHeight * -2.0f * gravity);
             SetAnimatorTrigger(JumpHash);
             PlayAnimatorState(jumpStateName);
             jumpAnimationActive = true;
@@ -113,6 +115,7 @@ public class PlayerMotor : MonoBehaviour
 
     public void Crouch()
     {
+        if (crouching && !CanStand()) return;
         crouching = !crouching;
         crouchTimer = 0f;
         lerpCrouch = true;
@@ -121,6 +124,20 @@ public class PlayerMotor : MonoBehaviour
     public void Sprint()
     {
         sprinting = !sprinting;
+    }
+
+    public void SetSprinting(bool value) => sprinting = value;
+
+    private bool CanStand()
+    {
+        float radius = controller.radius * 0.95f;
+        Vector3 bottom = transform.position + Vector3.up * (controller.height - radius);
+        Vector3 top = transform.position + Vector3.up * (standingHeight - radius);
+        foreach (var hit in Physics.OverlapCapsule(bottom, top, radius, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (!hit.transform.IsChildOf(transform)) return false;
+        }
+        return true;
     }
 
     private void CacheAnimatorParameters()

@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 namespace GunQuest.Input
 {
     // C# wrapper for PlayerInput.inputactions, stored beside that asset as in the tutorial.
-    public sealed class PlayerInput
+    public sealed class PlayerInput : System.IDisposable
     {
         public InputActionAsset Asset { get; }
 
@@ -15,6 +15,9 @@ namespace GunQuest.Input
         private readonly InputAction crouch;
         private readonly InputAction sprint;
         private readonly InputAction interact;
+        private readonly InputAction fire;
+        private readonly InputAction reload;
+        private readonly InputAction aim;
 
         public PlayerInput()
         {
@@ -48,9 +51,23 @@ namespace GunQuest.Input
             interact = onFoot.AddAction("Interact", InputActionType.Button, expectedControlLayout: "Button");
             interact.AddBinding("<Keyboard>/e");
             interact.AddBinding("<Gamepad>/buttonWest");
+            fire = onFoot.AddAction("Fire", InputActionType.Button);
+            fire.AddBinding("<Mouse>/leftButton");
+            fire.AddBinding("<Gamepad>/rightTrigger");
+            reload = onFoot.AddAction("Reload", InputActionType.Button);
+            reload.AddBinding("<Keyboard>/r");
+            reload.AddBinding("<Gamepad>/rightShoulder");
+            aim = onFoot.AddAction("Aim", InputActionType.Button);
+            aim.AddBinding("<Mouse>/rightButton");
+            aim.AddBinding("<Gamepad>/leftTrigger");
         }
 
         public OnFootActions OnFoot => new OnFootActions(this);
+        public void Dispose()
+        {
+            Asset.Disable();
+            Object.Destroy(Asset);
+        }
 
         public readonly struct OnFootActions
         {
@@ -62,6 +79,9 @@ namespace GunQuest.Input
             public InputAction Crouch => wrapper.crouch;
             public InputAction Sprint => wrapper.sprint;
             public InputAction Interact => wrapper.interact;
+            public InputAction Fire => wrapper.fire;
+            public InputAction Reload => wrapper.reload;
+            public InputAction Aim => wrapper.aim;
             public void Enable() => wrapper.onFoot.Enable();
             public void Disable() => wrapper.onFoot.Disable();
         }

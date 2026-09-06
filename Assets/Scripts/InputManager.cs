@@ -10,6 +10,10 @@ public class InputManager : MonoBehaviour
     private PlayerMotor motor;
     private PlayerLook look;
     private PlayerInteract interact;
+    private PlayerWeapon weapon;
+    private PlayerHealth health;
+    public bool IsAiming => onFoot.Aim != null && onFoot.Aim.IsPressed();
+    private bool CanAct => Time.timeScale > 0f && (health == null || !health.IsDead);
 
     public InputActions.OnFootActions OnFoot => onFoot;
 
@@ -22,6 +26,8 @@ public class InputManager : MonoBehaviour
         motor = GetComponent<PlayerMotor>();
         look = GetComponent<PlayerLook>();
         interact = GetComponent<PlayerInteract>();
+        weapon = GetComponent<PlayerWeapon>();
+        health = GetComponent<PlayerHealth>();
 
         if (look == null)
         {
@@ -36,7 +42,7 @@ public class InputManager : MonoBehaviour
         // Đăng ký sự kiện Jump khi hành động được thực hiện [3]
         onFoot.Jump.performed += ctx =>
         {
-            if (motor != null)
+            if (CanAct && motor != null)
             {
                 motor.Jump();
             }
@@ -44,7 +50,7 @@ public class InputManager : MonoBehaviour
 
         onFoot.Crouch.performed += ctx =>
         {
-            if (motor != null)
+            if (CanAct && motor != null)
             {
                 motor.Crouch();
             }
@@ -52,23 +58,28 @@ public class InputManager : MonoBehaviour
 
         onFoot.Sprint.performed += ctx =>
         {
-            if (motor != null)
+            if (CanAct && motor != null)
             {
-                motor.Sprint();
+                motor.SetSprinting(true);
             }
         };
 
         onFoot.Interact.performed += ctx =>
         {
-            if (interact != null)
+            if (CanAct && interact != null)
             {
                 interact.ProcessInteract();
             }
         };
+        onFoot.Sprint.canceled += ctx => { if (motor != null) motor.SetSprinting(false); };
+        onFoot.Reload.performed += ctx => { if (CanAct && weapon != null) weapon.BeginReload(); };
     }
 
-    void FixedUpdate()
+    void Update()
     {
+        if (!CanAct) return;
+        if (weapon == null) weapon = GetComponent<PlayerWeapon>();
+        if (weapon != null && onFoot.Fire.IsPressed()) weapon.TryFire();
         // Yêu cầu PlayerMotor xử lý di chuyển bằng giá trị từ Movement Action [4]
         if (motor != null)
         {
@@ -78,10 +89,11 @@ public class InputManager : MonoBehaviour
 
     void LateUpdate()
     {
+        if (!CanAct) return;
         // Yêu cầu PlayerLook xử lý nhìn xung quanh [2]
         if (look != null)
         {
-            look.ProcessLook(onFoot.Look.ReadValue<Vector2>());
+            look.ProcessLook(onFoot.Look.ReadValue<Vector2>(), onFoot.Look.activeControl?.device is Gamepad, IsAiming ? 0.55f : 1f);
         }
     }
 
@@ -92,6 +104,8 @@ public class InputManager : MonoBehaviour
 
     private void OnDisable()
     {
+        if (motor != null) motor.SetSprinting(false);
         onFoot.Disable(); // Hủy kích hoạt Action Map [5]
     }
+    private void OnDestroy() => playerInput?.Dispose();
 }
