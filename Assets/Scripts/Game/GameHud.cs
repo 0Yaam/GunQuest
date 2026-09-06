@@ -83,8 +83,9 @@ public sealed class GameHud : MonoBehaviour
         actionLabel = primary.GetComponentInChildren<Text>();
         MakeButton("RESTART OPERATION", m, 56, 614, 265, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Restart());
         MakeButton("EXIT", m, 337, 614, 269, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Quit());
-        Label("LOOK SENSITIVITY", m, 56, 694, 290, 26, 14, Muted);
-        var sliderRoot = Panel("Sensitivity", m, new Vector2(56, 734), new Vector2(550, 8), new Color(0.2f, 0.28f, 0.3f));
+        Label("LOOK SENSITIVITY", m, 56, 694, 260, 26, 14, Muted);
+        Label("AUDIO LEVEL", m, 346, 694, 260, 26, 14, Muted);
+        var sliderRoot = Panel("Sensitivity", m, new Vector2(56, 734), new Vector2(260, 8), new Color(0.2f, 0.28f, 0.3f));
         var slider = sliderRoot.gameObject.AddComponent<Slider>();
         sliderRoot.GetComponent<Image>().raycastTarget = true;
         var handle = Panel("Handle", sliderRoot, new Vector2(0, -7), new Vector2(16, 22), Accent);
@@ -96,6 +97,18 @@ public sealed class GameHud : MonoBehaviour
         slider.value = PlayerPrefs.GetFloat("GunQuest.Sensitivity", 20f);
         ApplySensitivity(slider.value);
         slider.onValueChanged.AddListener(ApplySensitivity);
+        var audioRoot = Panel("Audio", m, new Vector2(346, 734), new Vector2(260, 8), new Color(0.2f, 0.28f, 0.3f));
+        var audioSlider = audioRoot.gameObject.AddComponent<Slider>();
+        audioRoot.GetComponent<Image>().raycastTarget = true;
+        var audioHandle = Panel("Handle", audioRoot, new Vector2(0, -7), new Vector2(16, 22), Accent);
+        audioSlider.handleRect = audioHandle;
+        audioSlider.targetGraphic = audioHandle.GetComponent<Image>();
+        audioHandle.GetComponent<Image>().raycastTarget = true;
+        audioSlider.minValue = 0f;
+        audioSlider.maxValue = 1f;
+        audioSlider.value = PlayerPrefs.GetFloat("GunQuest.Audio", 0.75f);
+        ApplyAudio(audioSlider.value);
+        audioSlider.onValueChanged.AddListener(ApplyAudio);
         Label("Clear five escalating waves. Recover field supplies.\nSecure every operation to finish the campaign.", m, 56, 785, 550, 58, 16, Muted);
 
         session.StateChanged += RefreshMenu;
@@ -109,6 +122,12 @@ public sealed class GameHud : MonoBehaviour
         var look = session.player.GetComponent<PlayerLook>();
         look.xSensitivity = look.ySensitivity = value;
         PlayerPrefs.SetFloat("GunQuest.Sensitivity", value);
+    }
+
+    private static void ApplyAudio(float value)
+    {
+        AudioListener.volume = value;
+        PlayerPrefs.SetFloat("GunQuest.Audio", value);
     }
 
     private void OnPrimary()

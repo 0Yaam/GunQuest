@@ -78,6 +78,7 @@ public sealed class GameSession : MonoBehaviour
         player.Died += OnPlayerDied;
         weapon.Fired += OnWeaponFired;
         weapon.Hit += OnWeaponHit;
+        if (GetComponent<MissionSoundscape>() == null) gameObject.AddComponent<MissionSoundscape>();
         SetState(SessionState.Menu);
     }
 

@@ -30,6 +30,8 @@ Enemy formations evolve across a run: fast green **Runners** enter from wave two
 
 Each victory records a per-map, per-difficulty best score and awards a performance rank from C to S using accuracy, remaining health, completion time and threat level. Cleared operations are marked directly on the campaign selector.
 
+Outpost wind, Blackwood's low forest drone and Skyline's electronic pulse are generated at runtime, so each operation has its own lightweight soundscape. Victory and defeat have dedicated stingers, and both audio level and look sensitivity are adjustable from every menu.
+
 ## Editor tools
 
 The `GunQuest` menu contains the supported project workflows:
