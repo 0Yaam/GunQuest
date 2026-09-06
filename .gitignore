@@ -110,3 +110,7 @@ Desktop.ini
 
 # Local scratch / temp files
 scratch_*.json
+
+# Unity Test Framework generates these transient build inputs.
+/Assets/Resources/PerformanceTestRunInfo.json*
+/Assets/Resources/PerformanceTestRunSettings.json*

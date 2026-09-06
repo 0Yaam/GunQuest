@@ -6,7 +6,11 @@ public static class CombatFeedback
 
     public static void Tracer(Vector3 from, Vector3 to, Color color)
     {
-        if (lineMaterial == null) lineMaterial = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+        if (lineMaterial == null)
+        {
+            lineMaterial = Resources.Load<Material>("OutpostTracer");
+            if (lineMaterial == null) lineMaterial = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+        }
         var go = new GameObject("Shot tracer");
         var line = go.AddComponent<LineRenderer>();
         line.sharedMaterial = lineMaterial;
