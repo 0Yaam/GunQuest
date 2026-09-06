@@ -11,10 +11,11 @@ public sealed class GameHud : MonoBehaviour
     private RectTransform canvas;
     private GameObject menu;
     private GameObject hud;
-    private Text wave, score, health, ammo, notice, hint, title, subtitle, stats, actionLabel, hitMarker;
+    private Text wave, score, health, ammo, notice, hint, title, subtitle, stats, actionLabel, hitMarker, missionHud, operationLine;
     private Image healthFill, reloadFill, damageOverlay;
     private Button primary;
     private Button recruitButton, operatorButton, veteranButton;
+    private Button[] missionButtons;
     private float hitUntil;
     private float damageAlpha;
     private static readonly Color Teal = new Color(0.28f, 0.94f, 0.79f);
@@ -24,7 +25,7 @@ public sealed class GameHud : MonoBehaviour
     private void Start()
     {
         font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        var root = new GameObject("Outpost UI", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        var root = new GameObject("GunQuest UI", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         root.transform.SetParent(transform);
         root.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
         var scaler = root.GetComponent<CanvasScaler>();
@@ -38,7 +39,7 @@ public sealed class GameHud : MonoBehaviour
         hud = Panel("HUD", canvas, Vector2.zero, new Vector2(1600, 900), Color.clear).gameObject;
         var h = hud.GetComponent<RectTransform>();
         Panel("Mission", h, new Vector2(40, 32), new Vector2(340, 108), Dark);
-        Label("OPERATION / OUTPOST", h, 60, 48, 300, 24, 16, Teal);
+        missionHud = Label("", h, 60, 48, 300, 24, 16, Teal);
         wave = Label("", h, 60, 78, 300, 38, 28, Color.white);
         Panel("Score", h, new Vector2(1280, 32), new Vector2(280, 108), Dark);
         score = Label("", h, 1300, 47, 240, 75, 23, Color.white, TextAnchor.MiddleRight);
@@ -63,20 +64,26 @@ public sealed class GameHud : MonoBehaviour
         var m = menu.GetComponent<RectTransform>();
         Panel("Accent", m, new Vector2(56, 62), new Vector2(44, 4), Teal);
         Label("G U N Q U E S T", m, 116, 46, 440, 36, 18, Teal);
-        Label("TACTICAL SURVIVAL / 01", m, 56, 132, 560, 30, 15, Muted);
-        title = Label("OUTPOST", m, 50, 170, 580, 100, 76, Color.white);
-        subtitle = Label("", m, 56, 289, 552, 100, 23, Muted);
-        stats = Label("", m, 56, 395, 552, 60, 20, Teal);
-        Label("THREAT LEVEL", m, 56, 466, 290, 22, 14, Muted);
-        recruitButton = MakeButton("RECRUIT", m, 56, 496, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Recruit));
-        operatorButton = MakeButton("OPERATOR", m, 244, 496, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Operator));
-        veteranButton = MakeButton("VETERAN", m, 432, 496, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Veteran));
-        primary = MakeButton("Deploy", m, 56, 556, 550, 60, Teal, OnPrimary);
+        operationLine = Label("", m, 56, 99, 560, 25, 14, Muted);
+        missionButtons = new Button[GameSession.MissionNames.Length];
+        for (int i = 0; i < missionButtons.Length; i++)
+        {
+            int mission = i;
+            missionButtons[i] = MakeButton(GameSession.MissionNames[i], m, 56 + i * 184, 130, 170, 38, Dark, () => session.LoadMission(mission));
+        }
+        title = Label("", m, 50, 184, 580, 92, 70, Color.white);
+        subtitle = Label("", m, 56, 282, 552, 86, 21, Muted);
+        stats = Label("", m, 56, 374, 552, 62, 19, Teal);
+        Label("THREAT LEVEL", m, 56, 449, 290, 22, 14, Muted);
+        recruitButton = MakeButton("RECRUIT", m, 56, 478, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Recruit));
+        operatorButton = MakeButton("OPERATOR", m, 244, 478, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Operator));
+        veteranButton = MakeButton("VETERAN", m, 432, 478, 174, 42, Dark, () => session.SetDifficulty(Difficulty.Veteran));
+        primary = MakeButton("Deploy", m, 56, 540, 550, 60, Teal, OnPrimary);
         actionLabel = primary.GetComponentInChildren<Text>();
-        MakeButton("RESTART OPERATION", m, 56, 630, 265, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Restart());
-        MakeButton("EXIT", m, 337, 630, 269, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Quit());
-        Label("LOOK SENSITIVITY", m, 56, 714, 290, 26, 14, Muted);
-        var sliderRoot = Panel("Sensitivity", m, new Vector2(56, 754), new Vector2(550, 8), new Color(0.2f, 0.28f, 0.3f));
+        MakeButton("RESTART OPERATION", m, 56, 614, 265, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Restart());
+        MakeButton("EXIT", m, 337, 614, 269, 48, new Color(0.15f, 0.22f, 0.24f), () => session.Quit());
+        Label("LOOK SENSITIVITY", m, 56, 694, 290, 26, 14, Muted);
+        var sliderRoot = Panel("Sensitivity", m, new Vector2(56, 734), new Vector2(550, 8), new Color(0.2f, 0.28f, 0.3f));
         var slider = sliderRoot.gameObject.AddComponent<Slider>();
         sliderRoot.GetComponent<Image>().raycastTarget = true;
         var handle = Panel("Handle", sliderRoot, new Vector2(0, -7), new Vector2(16, 22), Teal);
@@ -88,7 +95,7 @@ public sealed class GameHud : MonoBehaviour
         slider.value = PlayerPrefs.GetFloat("GunQuest.Sensitivity", 20f);
         ApplySensitivity(slider.value);
         slider.onValueChanged.AddListener(ApplySensitivity);
-        Label("Hold the line. Clear all five waves.\nRecover supplies between engagements.", m, 56, 800, 550, 58, 16, Muted);
+        Label("Clear five escalating waves. Recover field supplies.\nSecure every operation to finish the campaign.", m, 56, 785, 550, 58, 16, Muted);
 
         session.StateChanged += RefreshMenu;
         session.weapon.Hit += OnHit;
@@ -107,6 +114,7 @@ public sealed class GameHud : MonoBehaviour
     {
         if (session.State == SessionState.Menu) session.StartRun();
         else if (session.State == SessionState.Paused) session.TogglePause();
+        else if (session.State == SessionState.Victory) session.LoadNextMission();
         else session.Restart();
     }
 
@@ -118,15 +126,22 @@ public sealed class GameHud : MonoBehaviour
         if (playing) return;
         bool won = session.State == SessionState.Victory;
         bool lost = session.State == SessionState.Defeat;
-        title.text = won ? "SECURED" : lost ? "SIGNAL LOST" : session.State == SessionState.Paused ? "ON HOLD" : "OUTPOST";
+        missionHud.text = $"OPERATION / {session.missionName}";
+        operationLine.text = $"TACTICAL SURVIVAL / {session.missionCode}   //   SELECT OPERATION";
+        title.text = won ? "SECURED" : lost ? "SIGNAL LOST" : session.State == SessionState.Paused ? "ON HOLD" : session.missionName;
         title.fontSize = lost ? 62 : 76;
-        subtitle.text = won ? "All hostile waves eliminated.\nThe outpost is yours." : lost ? "Your position has been overrun.\nRegroup and try another approach." : session.State == SessionState.Paused ? "Operation paused.\nTake a breath. Choose your next move." : "An isolated station. Five hostile waves.\nOne operator to hold the perimeter.";
+        subtitle.text = won ? session.victoryDescription : lost ? "Your position has been overrun.\nRegroup and try another approach." : session.State == SessionState.Paused ? "Operation paused.\nTake a breath. Choose your next move." : session.missionDescription;
         stats.text = $"BEST  {session.BestScore:000000}" + (session.Wave > 0 ? $"     SCORE  {session.Score:000000}\n{session.Kills} ELIMINATED / WAVE {session.Wave}" : "\n30-ROUND RIFLE / FIELD SUPPLIES AVAILABLE");
-        actionLabel.text = session.State == SessionState.Menu ? "DEPLOY  >" : session.State == SessionState.Paused ? "RESUME  >" : "TRY AGAIN  >";
+        actionLabel.text = session.State == SessionState.Menu ? "DEPLOY  >" : session.State == SessionState.Paused ? "RESUME  >" : won && session.HasNextMission ? "NEXT OPERATION  >" : won ? "REDEPLOY  >" : "TRY AGAIN  >";
         StyleDifficulty(recruitButton, session.Difficulty == Difficulty.Recruit);
         StyleDifficulty(operatorButton, session.Difficulty == Difficulty.Operator);
         StyleDifficulty(veteranButton, session.Difficulty == Difficulty.Veteran);
         recruitButton.interactable = operatorButton.interactable = veteranButton.interactable = session.State == SessionState.Menu;
+        for (int i = 0; i < missionButtons.Length; i++)
+        {
+            missionButtons[i].interactable = session.State == SessionState.Menu && i != session.MissionIndex;
+            StyleDifficulty(missionButtons[i], i == session.MissionIndex);
+        }
         EventSystem.current?.SetSelectedGameObject(primary.gameObject);
     }
 
@@ -156,7 +171,7 @@ public sealed class GameHud : MonoBehaviour
 
     private void OnHit(bool kill)
     {
-        hitMarker.text = "×";
+        hitMarker.text = "X";
         hitMarker.color = kill ? new Color(1f, 0.55f, 0.2f) : Teal;
         hitUntil = Time.unscaledTime + 0.15f;
     }

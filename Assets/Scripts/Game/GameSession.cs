@@ -13,6 +13,16 @@ namespace GunQuest.Game
 
 public sealed class GameSession : MonoBehaviour
 {
+    public static readonly string[] MissionScenes = { "Outpost", "Blackwood", "Skyline" };
+    public static readonly string[] MissionNames = { "OUTPOST", "BLACKWOOD", "SKYLINE" };
+
+    [Header("Mission")]
+    public string missionCode = "01";
+    public string missionName = "OUTPOST";
+    [TextArea(2, 3)] public string missionDescription = "An isolated station. Five hostile waves.\nOne operator to hold the perimeter.";
+    [TextArea(2, 3)] public string victoryDescription = "All hostile waves eliminated.\nThe outpost is yours.";
+    public Color missionAccent = new Color(0.28f, 0.94f, 0.79f);
+    [Header("Combat")]
     public PlayerHealth player;
     public PlayerWeapon weapon;
     public Enemy enemyPrefab;
@@ -24,6 +34,17 @@ public sealed class GameSession : MonoBehaviour
     public int Kills { get; private set; }
     public int BestScore { get; private set; }
     public Difficulty Difficulty { get; private set; }
+    public int MissionIndex
+    {
+        get
+        {
+            string scene = SceneManager.GetActiveScene().name;
+            for (int i = 0; i < MissionScenes.Length; i++) if (MissionScenes[i] == scene) return i;
+            return 0;
+        }
+    }
+    public bool HasNextMission => MissionIndex < MissionScenes.Length - 1;
+    public string BestScoreKey => $"GunQuest.BestScore.{SceneManager.GetActiveScene().name}.{Difficulty}";
     public int EnemiesRemaining => enemies.Count;
     public float NextWaveIn => Mathf.Max(0f, waveAt - Time.time);
     public float Elapsed { get; private set; }
@@ -35,8 +56,8 @@ public sealed class GameSession : MonoBehaviour
 
     private void Awake()
     {
-        BestScore = PlayerPrefs.GetInt("GunQuest.BestScore", 0);
         Difficulty = (Difficulty)Mathf.Clamp(PlayerPrefs.GetInt("GunQuest.Difficulty", 1), 0, 2);
+        LoadBestScore();
         player.Died += OnPlayerDied;
         SetState(SessionState.Menu);
     }
@@ -46,8 +67,11 @@ public sealed class GameSession : MonoBehaviour
         if (State != SessionState.Menu) return;
         Difficulty = value;
         PlayerPrefs.SetInt("GunQuest.Difficulty", (int)value);
+        LoadBestScore();
         StateChanged?.Invoke();
     }
+
+    private void LoadBestScore() => BestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
 
     public static int EnemyCountForWave(Difficulty difficulty, int wave)
     {
@@ -145,7 +169,7 @@ public sealed class GameSession : MonoBehaviour
         if (Score > BestScore)
         {
             BestScore = Score;
-            PlayerPrefs.SetInt("GunQuest.BestScore", BestScore);
+            PlayerPrefs.SetInt(BestScoreKey, BestScore);
             PlayerPrefs.Save();
         }
         SetState(result);
@@ -171,6 +195,28 @@ public sealed class GameSession : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    public void LoadMission(int index)
+    {
+        if (State != SessionState.Menu && State != SessionState.Victory) return;
+        index = Mathf.Clamp(index, 0, MissionScenes.Length - 1);
+        string scene = MissionScenes[index];
+        if (!Application.CanStreamedLevelBeLoaded(scene))
+        {
+            Debug.LogWarning($"Mission scene '{scene}' is not available in this build.");
+            return;
+        }
+        Time.timeScale = 1f;
+        PlayerPrefs.SetInt("GunQuest.Mission", index);
+        PlayerPrefs.Save();
+        SceneManager.LoadScene(scene);
+    }
+
+    public void LoadNextMission()
+    {
+        if (HasNextMission) LoadMission(MissionIndex + 1);
+        else Restart();
     }
 
     public void Quit()
