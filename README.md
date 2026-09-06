@@ -32,6 +32,12 @@ Each victory records a per-map, per-difficulty best score and awards a performan
 
 Outpost wind, Blackwood's low forest drone and Skyline's electronic pulse are generated at runtime, so each operation has its own lightweight soundscape. Victory and defeat have dedicated stingers, and both audio level and look sensitivity are adjustable from every menu.
 
+## Visual direction
+
+The PC presentation uses 115% render scale, 4x MSAA plus high-quality SMAA, 4K cascaded shadows, ACES tonemapping, restrained bloom, film grain and per-operation color grading. Outpost, Blackwood and Skyline each use a dedicated 4K HDR environment, PBR ground materials, atmospheric particles and local accent lighting. Enemies use the animated PBR sci-fi warrior, while the first-person GQ-30 is baked from its detailed rifle mesh. The deployment menu includes a custom transparent GunQuest emblem.
+
+The imported asphalt, concrete, dirt and HDR environments under `Assets/ThirdParty/PolyHaven` are CC0 assets from [Poly Haven](https://polyhaven.com/); exact source URLs are recorded in that folder's `LICENSE.txt`.
+
 ## Editor tools
 
 The `GunQuest` menu contains the supported project workflows:

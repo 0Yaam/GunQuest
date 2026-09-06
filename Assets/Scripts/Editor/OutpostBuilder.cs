@@ -16,6 +16,9 @@ public static class OutpostBuilder
     private const string ArtPath = "Assets/Outpost";
     private const string AncientPath = "Assets/DL/POLYART_Ancient Village/Prefabs/";
     private const string CityPath = "Assets/DL/ithappy/Cartoon_City_Free/Prefabs/";
+    private const string PolyHavenPath = "Assets/ThirdParty/PolyHaven/";
+    private const string WarriorPath = "Assets/DL/SciFiWarriorPBRHPPolyart/Prefabs/PBRCharacter.prefab";
+    private const string WarriorMaterialPath = "Assets/DL/SciFiWarriorPBRHPPolyart/Materials/PBR.mat";
     private static Material concrete, dark, teal, orange, sand, white;
 
     [MenuItem("GunQuest/Outpost/Generate playable outpost")]
@@ -24,6 +27,7 @@ public static class OutpostBuilder
         if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
         Directory.CreateDirectory(ArtPath);
         AssetDatabase.Refresh();
+        ConfigureImportedTextures();
         Directory.CreateDirectory("Assets/Resources");
         AssetDatabase.Refresh();
         if (AssetDatabase.LoadAssetAtPath<Material>("Assets/Resources/OutpostTracer.mat") == null)
@@ -31,13 +35,16 @@ public static class OutpostBuilder
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         concrete = Material("Concrete", new Color(0.25f, 0.32f, 0.32f));
         dark = Material("Graphite", new Color(0.075f, 0.11f, 0.13f));
-        sand = Material("Sand", new Color(0.43f, 0.40f, 0.31f));
+        sand = PbrMaterial("Outpost compacted earth", new Color(0.48f, 0.43f, 0.34f),
+            PolyHavenPath + "Materials/Dirt/dirt_diff_4k.jpg", PolyHavenPath + "Materials/Dirt/dirt_nor_dx_4k.jpg", 10f, 0.12f);
+        var landingSurface = PbrMaterial("Outpost concrete surface", new Color(0.72f, 0.76f, 0.73f),
+            PolyHavenPath + "Materials/Concrete/concrete_pavement_diff_4k.jpg", PolyHavenPath + "Materials/Concrete/concrete_pavement_nor_dx_4k.jpg", 9f, 0.26f);
         teal = Material("Signal teal", new Color(0.15f, 0.75f, 0.61f), true);
         orange = Material("Signal amber", new Color(1f, 0.32f, 0.08f), true);
         white = Material("Markings", new Color(0.75f, 0.81f, 0.72f));
         var geometry = new GameObject("Outpost / architecture").transform;
         Block("Foundation", geometry, new Vector3(0, -0.6f, 0), new Vector3(60, 1, 60), sand);
-        Block("Landing apron", geometry, new Vector3(0, -0.07f, 0), new Vector3(35, 0.1f, 39), concrete);
+        Block("Landing apron", geometry, new Vector3(0, -0.07f, 0), new Vector3(35, 0.1f, 39), landingSurface);
         for (int side = -1; side <= 1; side += 2)
         {
             Block("Perimeter east-west", geometry, new Vector3(side * 29, 1.5f, 0), new Vector3(1, 3, 59), concrete);
@@ -62,6 +69,11 @@ public static class OutpostBuilder
             Military("Buildings/Tower_003", geometry, new Vector3(side * 25, 0, 24), 5f, 0);
         }
         Military("Vehicles/Hummer_003", geometry, new Vector3(-20, 0, 1), 5.5f, -15);
+        Military("Vehicles/Tank_006", geometry, new Vector3(-20, 0, 13), 7.5f, 24f);
+        Military("Vehicles/Helicopter_001", geometry, new Vector3(20, 0, -14), 10f, -32f);
+        Military("Vehicles/Generator_004", geometry, new Vector3(18, 0, 7), 3.2f, 90f);
+        Military("Decorations/Barrier_015", geometry, new Vector3(-7, 0, 21), 4.2f, 8f);
+        Military("Decorations/Barrier_009", geometry, new Vector3(8, 0, 21), 4.2f, -8f);
         Military("Buildings/Radiostation_001", geometry, new Vector3(19, 0, 18), 6f, 180);
         Military("Buildings/Tent_002", geometry, new Vector3(-19, 0, 17), 6f, 90);
         // Central signal tower is the arena's landmark, readable from every lane.
@@ -88,23 +100,23 @@ public static class OutpostBuilder
         light.intensity = 2.2f;
         light.shadows = LightShadows.Soft;
         light.transform.rotation = Quaternion.Euler(38, -35, 0);
-        RenderSettings.ambientMode = AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.48f, 0.58f, 0.67f);
+        SetupSkybox("OutpostSky", PolyHavenPath + "HDRI/kloppenheim_06_puresky_4k.hdr", 0.82f, 118f);
+        RenderSettings.ambientMode = AmbientMode.Skybox;
+        RenderSettings.ambientIntensity = 1.05f;
         RenderSettings.fog = true;
         RenderSettings.fogColor = new Color(0.32f, 0.43f, 0.46f);
-        RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogStartDistance = 45f;
-        RenderSettings.fogEndDistance = 145f;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        RenderSettings.fogDensity = 0.0022f;
         var volume = new GameObject("Atmosphere").AddComponent<Volume>();
         volume.isGlobal = true;
-        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
-        profile.Add<Bloom>().intensity.Override(0.3f);
-        profile.Add<Vignette>().intensity.Override(0.22f);
-        var grading = profile.Add<ColorAdjustments>();
-        grading.contrast.Override(12f);
-        grading.saturation.Override(-8f);
-        SaveAsset(profile, ArtPath + "/Atmosphere.asset");
-        volume.sharedProfile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(ArtPath + "/Atmosphere.asset");
+        var profile = PrepareVolumeProfile(ArtPath + "/Atmosphere.asset");
+        ConfigurePostProcessing(profile, 0.38f, 0.20f, 13f, -3f, 0.12f, 0.035f);
+        volume.sharedProfile = profile;
+        AccentLight("Relay bounce", new Vector3(0, 5.2f, 4), teal.color, 4.5f, 19f);
+        AccentLight("West perimeter fill", new Vector3(-17, 4f, -2), new Color(0.26f, 0.62f, 1f), 2.8f, 15f);
+        AccentLight("East perimeter fill", new Vector3(17, 4f, 10), new Color(1f, 0.38f, 0.14f), 2.4f, 14f);
+        AtmosphericParticles("Outpost dust", new Vector3(0, 5f, 0), new Vector3(57, 10, 57),
+            new Color(1f, 0.72f, 0.38f, 0.28f), 240, 0.035f, 0.12f, false);
 
         var surface = geometry.gameObject.AddComponent<NavMeshSurface>();
         surface.collectObjects = CollectObjects.Children;
@@ -153,8 +165,10 @@ public static class OutpostBuilder
     private static void GenerateBlackwood()
     {
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        var ground = Material("Blackwood earth", new Color(0.12f, 0.18f, 0.12f));
-        var moss = Material("Blackwood moss", new Color(0.23f, 0.34f, 0.18f));
+        var ground = PbrMaterial("Blackwood earth", new Color(0.34f, 0.42f, 0.31f),
+            PolyHavenPath + "Materials/Dirt/dirt_diff_4k.jpg", PolyHavenPath + "Materials/Dirt/dirt_nor_dx_4k.jpg", 12f, 0.08f);
+        var moss = PbrMaterial("Blackwood moss trail", new Color(0.30f, 0.46f, 0.27f),
+            PolyHavenPath + "Materials/Dirt/dirt_diff_4k.jpg", PolyHavenPath + "Materials/Dirt/dirt_nor_dx_4k.jpg", 9f, 0.10f);
         var stone = Material("Blackwood stone", new Color(0.25f, 0.31f, 0.27f));
         var wood = Material("Blackwood timber", new Color(0.20f, 0.12f, 0.07f));
         dark = Material("Blackwood shadow", new Color(0.035f, 0.06f, 0.05f));
@@ -192,6 +206,8 @@ public static class OutpostBuilder
             Block("Fallen timber", geometry, new Vector3(side * 12, 0.65f, -1), new Vector3(5, 1.3f, 1.1f), wood).transform.rotation = Quaternion.Euler(0, side * 20, 4);
             Decor(AncientPath + "PA_Bamboolamp_Set1.prefab", geometry, new Vector3(side * 5, 0, -7), 2f, 0, false);
             Decor(AncientPath + "PA_Bamboolamp_Set2.prefab", geometry, new Vector3(side * 5, 0, 10), 2f, 180f, false);
+            AccentLight("Village lantern", new Vector3(side * 5, 2.1f, -7), new Color(1f, 0.34f, 0.08f), 3.2f, 10f);
+            AccentLight("Spirit lantern", new Vector3(side * 5, 2.1f, 10), teal.color, 2.8f, 9f);
         }
 
         // The spirit shrine is the strong central silhouette and a compact piece of hard cover.
@@ -218,8 +234,11 @@ public static class OutpostBuilder
                 new Vector3(Mathf.Sin(angle) * 100f, -5f, Mathf.Cos(angle) * 100f), 42f, i * 29f, false);
         }
 
+        SetupSkybox("BlackwoodSky", PolyHavenPath + "HDRI/nature_reserve_forest_4k.hdr", 0.68f, 214f);
         SetupAtmosphere("Blackwood", new Color(0.36f, 0.48f, 0.37f), new Color(0.08f, 0.15f, 0.11f),
-            new Color(0.42f, 0.58f, 0.48f), 1.45f, new Vector3(32, -48, 0), 26f, 108f, 0.46f, 0.29f, 17f, -5f);
+            new Color(0.55f, 0.70f, 0.58f), 2.05f, new Vector3(32, -48, 0), 26f, 108f, 0.46f, 0.27f, 17f, 0f);
+        AtmosphericParticles("Blackwood fireflies", new Vector3(0, 4.5f, 1), new Vector3(55, 8, 55),
+            new Color(0.30f, 1f, 0.48f, 0.72f), 135, 0.055f, 0.18f, false);
         BakeNavigation(geometry, ArtPath + "/BlackwoodNavMesh.asset");
         CreateMissionActors("02", "BLACKWOOD",
             "A forgotten village beneath a poisoned canopy.\nBreak the signal feeding the awakened grove.",
@@ -233,8 +252,10 @@ public static class OutpostBuilder
     private static void GenerateSkyline()
     {
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        var asphalt = Material("Skyline asphalt", new Color(0.055f, 0.065f, 0.09f));
-        var sidewalk = Material("Skyline sidewalk", new Color(0.20f, 0.22f, 0.28f));
+        var asphalt = PbrMaterial("Skyline asphalt", new Color(0.22f, 0.25f, 0.33f),
+            PolyHavenPath + "Materials/Asphalt/asphalt_01_diff_4k.jpg", PolyHavenPath + "Materials/Asphalt/asphalt_01_nor_dx_4k.jpg", 14f, 0.18f);
+        var sidewalk = PbrMaterial("Skyline sidewalk", new Color(0.58f, 0.61f, 0.67f),
+            PolyHavenPath + "Materials/Concrete/concrete_pavement_diff_4k.jpg", PolyHavenPath + "Materials/Concrete/concrete_pavement_nor_dx_4k.jpg", 10f, 0.24f);
         dark = Material("Skyline midnight", new Color(0.018f, 0.025f, 0.055f));
         concrete = sidewalk;
         sand = asphalt;
@@ -268,7 +289,9 @@ public static class OutpostBuilder
             Block("Raised sidewalk", geometry, new Vector3(side * 11f, 0.15f, 0), new Vector3(7.5f, 0.3f, 69), sidewalk);
             for (int z = -26; z <= 26; z += 13)
             {
+                Color stripColor = (z / 13) % 2 == 0 ? teal.color : orange.color;
                 Block("Sidewalk light", geometry, new Vector3(side * 8f, 0.34f, z), new Vector3(0.18f, 0.08f, 3.8f), (z / 13) % 2 == 0 ? teal : orange, false);
+                AccentLight("Avenue neon pool", new Vector3(side * 8f, 2.3f, z), stripColor, 3.4f, 11f);
             }
         }
         Block("North perimeter", geometry, new Vector3(0, 1.4f, 34), new Vector3(70, 2.8f, 1), sidewalk);
@@ -299,8 +322,11 @@ public static class OutpostBuilder
         WorldText("SKYLINE / ZERO", geometry, new Vector3(0, 5f, 33.3f), 0.095f, white.color);
         WorldText("CUT THE BROADCAST", geometry, new Vector3(0, 4.1f, 33.3f), 0.04f, orange.color);
 
+        SetupSkybox("SkylineSky", PolyHavenPath + "HDRI/satara_night_4k.hdr", 0.83f, 36f);
         SetupAtmosphere("Skyline", new Color(0.08f, 0.10f, 0.24f), new Color(0.018f, 0.025f, 0.075f),
-            new Color(0.20f, 0.29f, 0.58f), 0.65f, new Vector3(55, 28, 0), 34f, 125f, 0.8f, 0.34f, 24f, -12f);
+            new Color(0.30f, 0.40f, 0.76f), 1.15f, new Vector3(55, 28, 0), 34f, 125f, 0.72f, 0.31f, 22f, -4f);
+        AtmosphericParticles("Skyline rain", new Vector3(0, 10f, 0), new Vector3(68, 18, 68),
+            new Color(0.30f, 0.62f, 1f, 0.25f), 850, 0.022f, 8.5f, true);
         BakeNavigation(geometry, ArtPath + "/SkylineNavMesh.asset");
         CreateMissionActors("03", "SKYLINE",
             "A blackout district under hostile control.\nFight block by block and cut the broadcast.",
@@ -323,7 +349,7 @@ public static class OutpostBuilder
         session.missionAccent = accent;
         session.player = player.GetComponent<PlayerHealth>();
         session.weapon = player.GetComponent<PlayerWeapon>();
-        session.enemyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtPath + "/Sentinel.prefab").GetComponent<Enemy>();
+        session.enemyPrefab = CreateEnemy();
         session.spawnPoints = new Transform[spawns.Length];
         for (int i = 0; i < spawns.Length; i++)
         {
@@ -345,23 +371,18 @@ public static class OutpostBuilder
         light.intensity = sunIntensity;
         light.shadows = LightShadows.Soft;
         light.transform.rotation = Quaternion.Euler(sunRotation);
-        RenderSettings.ambientMode = AmbientMode.Flat;
-        RenderSettings.ambientLight = ambient;
+        RenderSettings.ambientMode = AmbientMode.Skybox;
+        RenderSettings.ambientIntensity = Mathf.Max(0.35f, ambient.maxColorComponent * 1.45f);
         RenderSettings.fog = true;
         RenderSettings.fogColor = fog;
-        RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogStartDistance = fogStart;
-        RenderSettings.fogEndDistance = fogEnd;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        RenderSettings.fogDensity = name == "Blackwood" ? 0.0065f : 0.0032f;
         var volume = new GameObject(name + " atmosphere").AddComponent<Volume>();
         volume.isGlobal = true;
-        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
-        profile.Add<Bloom>().intensity.Override(bloom);
-        profile.Add<Vignette>().intensity.Override(vignette);
-        var grading = profile.Add<ColorAdjustments>();
-        grading.contrast.Override(contrast);
-        grading.saturation.Override(saturation);
-        SaveAsset(profile, ArtPath + "/" + name + "Atmosphere.asset");
-        volume.sharedProfile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(ArtPath + "/" + name + "Atmosphere.asset");
+        var profile = PrepareVolumeProfile(ArtPath + "/" + name + "Atmosphere.asset");
+        ConfigurePostProcessing(profile, bloom, vignette, contrast, saturation,
+            name == "Skyline" ? 0.20f : 0.34f, name == "Skyline" ? 0.06f : 0.045f);
+        volume.sharedProfile = profile;
     }
 
     private static void BakeNavigation(Transform geometry, string assetPath)
@@ -387,11 +408,13 @@ public static class OutpostBuilder
         cam.transform.SetParent(player.transform, false);
         cam.transform.localPosition = new Vector3(0, 1.7f, 0);
         cam.nearClipPlane = 0.05f;
-        cam.farClipPlane = 220f;
+        cam.farClipPlane = 500f;
         cam.fieldOfView = 75f;
-        cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = RenderSettings.fogColor;
-        cam.gameObject.AddComponent<UniversalAdditionalCameraData>().renderPostProcessing = true;
+        cam.clearFlags = CameraClearFlags.Skybox;
+        var cameraData = cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
+        cameraData.renderPostProcessing = true;
+        cameraData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+        cameraData.antialiasingQuality = AntialiasingQuality.High;
         var motor = player.AddComponent<PlayerMotor>();
         motor.jumpHeight = 1.25f;
         motor.gravity = -22f;
@@ -403,19 +426,38 @@ public static class OutpostBuilder
         player.AddComponent<InputManager>();
         var gun = new GameObject("GQ-30 rifle").transform;
         gun.SetParent(cam.transform, false);
-        gun.localPosition = new Vector3(0.3f, -0.28f, 0.55f);
-        Block("Receiver", gun, Vector3.zero, new Vector3(0.14f, 0.16f, 0.48f), dark, false);
-        Block("Foregrip", gun, new Vector3(0, -0.025f, 0.27f), new Vector3(0.12f, 0.12f, 0.3f), concrete, false);
-        Block("Barrel", gun, new Vector3(0, 0.02f, 0.5f), new Vector3(0.055f, 0.055f, 0.25f), dark, false);
-        Block("Magazine", gun, new Vector3(0, -0.16f, -0.05f), new Vector3(0.09f, 0.23f, 0.14f), concrete, false);
-        Block("Stock", gun, new Vector3(0, -0.025f, -0.34f), new Vector3(0.105f, 0.14f, 0.24f), concrete, false);
-        Block("Sight left", gun, new Vector3(-0.045f, 0.135f, 0), new Vector3(0.014f, 0.1f, 0.04f), dark, false);
-        Block("Sight right", gun, new Vector3(0.045f, 0.135f, 0), new Vector3(0.014f, 0.1f, 0.04f), dark, false);
-        Block("Sight top", gun, new Vector3(0, 0.18f, 0), new Vector3(0.1f, 0.014f, 0.04f), dark, false);
-        Block("Charge indicator", gun, new Vector3(0.071f, 0.02f, -0.08f), new Vector3(0.006f, 0.035f, 0.2f), teal, false);
+        gun.localPosition = new Vector3(0.30f, -0.31f, 0.58f);
+        var rifleMesh = CreateBakedRifleMesh();
+        if (rifleMesh != null)
+        {
+            var rifleModel = new GameObject("PBR rifle geometry", typeof(MeshFilter), typeof(MeshRenderer));
+            rifleModel.transform.SetParent(gun, false);
+            rifleModel.GetComponent<MeshFilter>().sharedMesh = rifleMesh;
+            rifleModel.GetComponent<MeshRenderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(WarriorMaterialPath);
+            Vector3 meshSize = rifleMesh.bounds.size;
+            float longest = Mathf.Max(meshSize.x, meshSize.y, meshSize.z);
+            Quaternion orientation = meshSize.x >= meshSize.y && meshSize.x >= meshSize.z
+                ? Quaternion.Euler(0, -90f, 0)
+                : meshSize.y >= meshSize.z ? Quaternion.Euler(90f, 0, 0) : Quaternion.identity;
+            float modelScale = 0.88f / Mathf.Max(0.01f, longest);
+            rifleModel.transform.localRotation = orientation;
+            rifleModel.transform.localScale = Vector3.one * modelScale;
+            rifleModel.transform.localPosition = -(orientation * rifleMesh.bounds.center) * modelScale + new Vector3(0, 0, 0.06f);
+            Block("Holographic sight", gun, new Vector3(0, 0.08f, 0.08f), new Vector3(0.062f, 0.008f, 0.05f), teal, false);
+            Block("Sight shroud left", gun, new Vector3(-0.039f, 0.05f, 0.08f), new Vector3(0.009f, 0.06f, 0.055f), dark, false);
+            Block("Sight shroud right", gun, new Vector3(0.039f, 0.05f, 0.08f), new Vector3(0.009f, 0.06f, 0.055f), dark, false);
+        }
+        else
+        {
+            Block("Receiver", gun, Vector3.zero, new Vector3(0.14f, 0.16f, 0.48f), dark, false);
+            Block("Foregrip", gun, new Vector3(0, -0.025f, 0.27f), new Vector3(0.12f, 0.12f, 0.3f), concrete, false);
+            Block("Barrel", gun, new Vector3(0, 0.02f, 0.5f), new Vector3(0.055f, 0.055f, 0.25f), dark, false);
+            Block("Magazine", gun, new Vector3(0, -0.16f, -0.05f), new Vector3(0.09f, 0.23f, 0.14f), concrete, false);
+            Block("Stock", gun, new Vector3(0, -0.025f, -0.34f), new Vector3(0.105f, 0.14f, 0.24f), concrete, false);
+        }
         var muzzle = new GameObject("Muzzle").transform;
         muzzle.SetParent(gun, false);
-        muzzle.localPosition = new Vector3(0, 0.02f, 0.64f);
+        muzzle.localPosition = new Vector3(0, 0.02f, 0.58f);
         weapon.muzzle = muzzle;
         var presentation = player.AddComponent<WeaponPresentation>();
         presentation.weapon = weapon;
@@ -425,26 +467,50 @@ public static class OutpostBuilder
 
     private static Enemy CreateEnemy()
     {
-        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(ArtPath + "/Sentinel.prefab");
+        const string enemyPath = ArtPath + "/SentinelPBR.prefab";
+        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(enemyPath);
         if (existing != null) return existing.GetComponent<Enemy>();
         var root = new GameObject("Sentinel");
         var collider = root.AddComponent<CapsuleCollider>();
         collider.center = new Vector3(0, 1, 0);
         collider.height = 2;
         collider.radius = 0.45f;
-        Block("Armored torso", root.transform, new Vector3(0, 1.15f, 0), new Vector3(0.85f, 0.7f, 0.5f), dark, false);
-        Block("Helmet", root.transform, new Vector3(0, 1.8f, 0), new Vector3(0.48f, 0.42f, 0.45f), concrete, false);
-        Block("Visor", root.transform, new Vector3(0, 1.84f, 0.235f), new Vector3(0.39f, 0.075f, 0.035f), orange, false);
-        Block("Reactor", root.transform, new Vector3(0, 1.3f, 0.27f), new Vector3(0.2f, 0.2f, 0.035f), orange, false);
-        for (int side = -1; side <= 1; side += 2)
+        var warriorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(WarriorPath);
+        if (warriorPrefab != null)
         {
-            Block("Leg", root.transform, new Vector3(side * 0.23f, 0.4f, 0), new Vector3(0.25f, 0.8f, 0.32f), concrete, false);
-            Block("Shoulder", root.transform, new Vector3(side * 0.53f, 1.4f, 0), new Vector3(0.25f, 0.3f, 0.38f), concrete, false);
+            var warrior = (GameObject)PrefabUtility.InstantiatePrefab(warriorPrefab);
+            warrior.name = "Sentinel PBR armor";
+            warrior.transform.SetParent(root.transform, false);
+            warrior.transform.localPosition = Vector3.zero;
+            warrior.transform.localRotation = Quaternion.identity;
+            foreach (var childCollider in warrior.GetComponentsInChildren<Collider>()) childCollider.enabled = false;
+            var renderers = warrior.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 0)
+            {
+                Bounds bounds = renderers[0].bounds;
+                foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+                warrior.transform.localScale *= 2.08f / Mathf.Max(0.01f, bounds.size.y);
+                bounds = renderers[0].bounds;
+                foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+                warrior.transform.position += Vector3.up * -bounds.min.y;
+            }
+            var animator = warrior.GetComponentInChildren<Animator>();
+            if (animator != null) animator.applyRootMotion = false;
         }
-        var barrel = Block("Pulse weapon", root.transform, new Vector3(0.5f, 1.1f, 0.45f), new Vector3(0.18f, 0.18f, 0.7f), dark, false).transform;
+        else
+        {
+            Block("Armored torso", root.transform, new Vector3(0, 1.15f, 0), new Vector3(0.85f, 0.7f, 0.5f), dark, false);
+            Block("Helmet", root.transform, new Vector3(0, 1.8f, 0), new Vector3(0.48f, 0.42f, 0.45f), concrete, false);
+            Block("Visor", root.transform, new Vector3(0, 1.84f, 0.235f), new Vector3(0.39f, 0.075f, 0.035f), orange, false);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Block("Leg", root.transform, new Vector3(side * 0.23f, 0.4f, 0), new Vector3(0.25f, 0.8f, 0.32f), concrete, false);
+                Block("Shoulder", root.transform, new Vector3(side * 0.53f, 1.4f, 0), new Vector3(0.25f, 0.3f, 0.38f), concrete, false);
+            }
+        }
         var muzzle = new GameObject("Muzzle").transform;
         muzzle.SetParent(root.transform, false);
-        muzzle.localPosition = new Vector3(0.5f, 1.1f, 0.85f);
+        muzzle.localPosition = new Vector3(0.34f, 1.22f, 0.78f);
         var agent = root.AddComponent<NavMeshAgent>();
         agent.height = 2;
         agent.radius = 0.45f;
@@ -452,14 +518,219 @@ public static class OutpostBuilder
         agent.angularSpeed = 240f;
         root.AddComponent<EnemyHealth>();
         var enemy = root.AddComponent<Enemy>();
+        root.AddComponent<EnemyVisualController>();
         enemy.gunBarrel = muzzle;
         enemy.sightDistance = 45f;
         enemy.fieldOfView = 150f;
         enemy.huntPlayer = true;
         enemy.bulletPrefab = TutorialMapBuilder.CreateBulletPrefab();
-        var prefab = PrefabUtility.SaveAsPrefabAsset(root, ArtPath + "/Sentinel.prefab");
+        var prefab = PrefabUtility.SaveAsPrefabAsset(root, enemyPath);
         Object.DestroyImmediate(root);
         return prefab.GetComponent<Enemy>();
+    }
+
+    private static Mesh CreateBakedRifleMesh()
+    {
+        const string meshPath = ArtPath + "/GQ30Rifle.asset";
+        var existing = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
+        if (existing != null) return existing;
+        var source = AssetDatabase.LoadAssetAtPath<GameObject>(WarriorPath);
+        if (source == null) return null;
+        var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
+        var animator = instance.GetComponentInChildren<Animator>();
+        if (animator != null)
+        {
+            animator.applyRootMotion = false;
+            animator.Rebind();
+            animator.Update(0f);
+        }
+        SkinnedMeshRenderer rifleRenderer = null;
+        foreach (var renderer in instance.GetComponentsInChildren<SkinnedMeshRenderer>())
+            if (renderer.name == "AssaultRifle") { rifleRenderer = renderer; break; }
+        if (rifleRenderer == null)
+        {
+            Object.DestroyImmediate(instance);
+            return null;
+        }
+        var mesh = new Mesh { name = "GQ-30 Viewmodel Rifle" };
+        rifleRenderer.BakeMesh(mesh, true);
+        mesh.RecalculateBounds();
+        AssetDatabase.CreateAsset(mesh, meshPath);
+        Object.DestroyImmediate(instance);
+        return AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
+    }
+
+    private static void ConfigureImportedTextures()
+    {
+        ConfigureTexture(PolyHavenPath + "Materials/Asphalt/asphalt_01_diff_4k.jpg", false);
+        ConfigureTexture(PolyHavenPath + "Materials/Asphalt/asphalt_01_nor_dx_4k.jpg", true);
+        ConfigureTexture(PolyHavenPath + "Materials/Concrete/concrete_pavement_diff_4k.jpg", false);
+        ConfigureTexture(PolyHavenPath + "Materials/Concrete/concrete_pavement_nor_dx_4k.jpg", true);
+        ConfigureTexture(PolyHavenPath + "Materials/Dirt/dirt_diff_4k.jpg", false);
+        ConfigureTexture(PolyHavenPath + "Materials/Dirt/dirt_nor_dx_4k.jpg", true);
+        ConfigureTexture(PolyHavenPath + "HDRI/kloppenheim_06_puresky_4k.hdr", false, true);
+        ConfigureTexture(PolyHavenPath + "HDRI/nature_reserve_forest_4k.hdr", false, true);
+        ConfigureTexture(PolyHavenPath + "HDRI/satara_night_4k.hdr", false, true);
+        ConfigureTexture("Assets/Resources/Brand/GunQuestEmblem.png", false, false, true);
+    }
+
+    private static void ConfigureTexture(string path, bool normal, bool hdr = false, bool ui = false)
+    {
+        var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer == null) return;
+        importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+        importer.sRGBTexture = !normal && !hdr;
+        importer.wrapMode = ui ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
+        importer.filterMode = FilterMode.Trilinear;
+        importer.anisoLevel = ui ? 1 : 16;
+        importer.mipmapEnabled = !ui;
+        importer.maxTextureSize = ui ? 1024 : 4096;
+        importer.textureCompression = TextureImporterCompression.CompressedHQ;
+        var standalone = importer.GetPlatformTextureSettings("Standalone");
+        standalone.overridden = !ui;
+        standalone.maxTextureSize = ui ? 1024 : 4096;
+        standalone.textureCompression = TextureImporterCompression.CompressedHQ;
+        standalone.compressionQuality = 100;
+        importer.SetPlatformTextureSettings(standalone);
+        if (ui)
+        {
+            importer.alphaSource = TextureImporterAlphaSource.FromInput;
+            importer.alphaIsTransparency = true;
+        }
+        importer.SaveAndReimport();
+    }
+
+    private static void SetupSkybox(string name, string texturePath, float exposure, float rotation)
+    {
+        string path = ArtPath + "/" + name + ".mat";
+        var sky = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (sky == null)
+        {
+            sky = new Material(Shader.Find("Skybox/Panoramic"));
+            AssetDatabase.CreateAsset(sky, path);
+        }
+        sky.shader = Shader.Find("Skybox/Panoramic");
+        sky.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath));
+        sky.SetFloat("_Exposure", exposure);
+        sky.SetFloat("_Rotation", rotation);
+        EditorUtility.SetDirty(sky);
+        RenderSettings.skybox = sky;
+        RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
+        RenderSettings.reflectionIntensity = 1f;
+        DynamicGI.UpdateEnvironment();
+    }
+
+    private static void ConfigurePostProcessing(VolumeProfile profile, float bloom, float vignette,
+        float contrast, float saturation, float exposure, float grain)
+    {
+        var bloomEffect = AddVolumeOverride<Bloom>(profile);
+        bloomEffect.intensity.Override(bloom);
+        bloomEffect.threshold.Override(1.05f);
+        bloomEffect.scatter.Override(0.67f);
+        var vignetteEffect = AddVolumeOverride<Vignette>(profile);
+        vignetteEffect.intensity.Override(vignette);
+        vignetteEffect.smoothness.Override(0.38f);
+        var grading = AddVolumeOverride<ColorAdjustments>(profile);
+        grading.contrast.Override(contrast);
+        grading.saturation.Override(saturation);
+        grading.postExposure.Override(exposure);
+        AddVolumeOverride<Tonemapping>(profile).mode.Override(TonemappingMode.ACES);
+        var filmGrain = AddVolumeOverride<FilmGrain>(profile);
+        filmGrain.intensity.Override(grain);
+        filmGrain.response.Override(0.82f);
+        AddVolumeOverride<ChromaticAberration>(profile).intensity.Override(0.018f);
+        AddVolumeOverride<LensDistortion>(profile).intensity.Override(-0.025f);
+        EditorUtility.SetDirty(profile);
+    }
+
+    private static VolumeProfile PrepareVolumeProfile(string path)
+    {
+        var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(path);
+        if (profile == null)
+        {
+            profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            AssetDatabase.CreateAsset(profile, path);
+        }
+        foreach (var component in profile.components.ToArray())
+            if (component != null) Object.DestroyImmediate(component, true);
+        profile.components.Clear();
+        EditorUtility.SetDirty(profile);
+        return profile;
+    }
+
+    private static T AddVolumeOverride<T>(VolumeProfile profile) where T : VolumeComponent
+    {
+        var component = profile.Add<T>();
+        AssetDatabase.AddObjectToAsset(component, profile);
+        return component;
+    }
+
+    private static void AccentLight(string name, Vector3 position, Color color, float intensity, float range)
+    {
+        var accent = new GameObject(name).AddComponent<Light>();
+        accent.type = LightType.Point;
+        accent.color = color;
+        accent.intensity = intensity;
+        accent.range = range;
+        accent.shadows = LightShadows.None;
+        accent.transform.position = position;
+    }
+
+    private static void AtmosphericParticles(string name, Vector3 position, Vector3 boxSize, Color color,
+        int maximum, float size, float speed, bool rain)
+    {
+        var particles = new GameObject(name, typeof(ParticleSystem)).GetComponent<ParticleSystem>();
+        particles.transform.position = position;
+        var main = particles.main;
+        main.loop = true;
+        main.playOnAwake = true;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = maximum;
+        main.startLifetime = rain ? 2.4f : 8f;
+        main.startSize = size;
+        main.startSpeed = rain ? 0f : speed;
+        main.startColor = color;
+        var emission = particles.emission;
+        emission.rateOverTime = maximum / (rain ? 2.4f : 8f);
+        var shape = particles.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = boxSize;
+        var velocity = particles.velocityOverLifetime;
+        velocity.enabled = true;
+        velocity.space = ParticleSystemSimulationSpace.World;
+        velocity.y = rain ? -speed : 0.035f;
+        var noise = particles.noise;
+        noise.enabled = !rain;
+        noise.strength = rain ? 0f : 0.34f;
+        noise.frequency = 0.28f;
+        noise.scrollSpeed = 0.22f;
+        var renderer = particles.GetComponent<ParticleSystemRenderer>();
+        renderer.renderMode = rain ? ParticleSystemRenderMode.Stretch : ParticleSystemRenderMode.Billboard;
+        renderer.lengthScale = rain ? 5.5f : 1f;
+        renderer.velocityScale = rain ? 0.08f : 0f;
+        renderer.sharedMaterial = ParticleMaterial(rain ? "Rain particles" : name + " particles");
+    }
+
+    private static Material ParticleMaterial(string name)
+    {
+        string path = ArtPath + "/" + name + ".mat";
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat == null)
+        {
+            mat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        mat.shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        mat.SetColor("_BaseColor", Color.white);
+        mat.SetFloat("_Surface", 1f);
+        mat.SetFloat("_Blend", 1f);
+        mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+        mat.SetFloat("_DstBlend", (float)BlendMode.One);
+        mat.SetFloat("_ZWrite", 0f);
+        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        mat.renderQueue = (int)RenderQueue.Transparent;
+        EditorUtility.SetDirty(mat);
+        return mat;
     }
 
     private static void Pickup(Vector3 position, bool heals)
@@ -556,6 +827,25 @@ public static class OutpostBuilder
         mat.color = color;
         mat.SetFloat("_Smoothness", 0.3f);
         if (emissive) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", color * 1.5f); }
+        EditorUtility.SetDirty(mat);
+        return mat;
+    }
+
+    private static Material PbrMaterial(string name, Color tint, string albedoPath, string normalPath, float tiling, float smoothness)
+    {
+        var mat = Material(name, tint);
+        mat.shader = Shader.Find("Universal Render Pipeline/Lit");
+        var albedo = AssetDatabase.LoadAssetAtPath<Texture2D>(albedoPath);
+        var normal = AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
+        mat.SetColor("_BaseColor", tint);
+        mat.SetTexture("_BaseMap", albedo);
+        mat.SetTextureScale("_BaseMap", Vector2.one * tiling);
+        mat.SetTexture("_BumpMap", normal);
+        mat.SetTextureScale("_BumpMap", Vector2.one * tiling);
+        mat.SetFloat("_BumpScale", 1f);
+        mat.SetFloat("_Smoothness", smoothness);
+        mat.SetFloat("_Metallic", 0f);
+        mat.EnableKeyword("_NORMALMAP");
         EditorUtility.SetDirty(mat);
         return mat;
     }

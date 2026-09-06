@@ -17,7 +17,8 @@ public sealed class EnemyHealth : MonoBehaviour
     {
         CurrentHealth = maxHealth;
         renderers = GetComponentsInChildren<Renderer>();
-        roleRenderers = System.Array.FindAll(renderers, visual => visual.name == "Visor" || visual.name == "Reactor" || visual.name == "Shoulder");
+        roleRenderers = System.Array.FindAll(renderers, visual => visual.name == "Visor" || visual.name == "Reactor" ||
+            visual.name == "Shoulder" || visual.name == "Backpack1" || visual.name == "AssaultRifle");
         properties = new MaterialPropertyBlock();
     }
 
@@ -40,7 +41,7 @@ public sealed class EnemyHealth : MonoBehaviour
     public void Configure(float health, Color tint)
     {
         Configure(health);
-        roleTint = tint;
+        roleTint = Color.Lerp(Color.white, tint, 0.38f);
         ApplyRoleTint();
     }
 
@@ -62,6 +63,7 @@ public sealed class EnemyHealth : MonoBehaviour
         if (TryGetComponent<StateMachine>(out var machine)) machine.enabled = false;
         if (TryGetComponent<NavMeshAgent>(out var agent)) agent.enabled = false;
         if (TryGetComponent<Enemy>(out var enemy)) enemy.enabled = false;
+        if (TryGetComponent<EnemyVisualController>(out var visualController)) visualController.Die();
         foreach (var collider in GetComponentsInChildren<Collider>()) collider.enabled = false;
         StartCoroutine(DeathAnimation());
         Died?.Invoke(this);
@@ -72,12 +74,15 @@ public sealed class EnemyHealth : MonoBehaviour
     {
         Vector3 start = transform.localScale;
         float elapsed = 0f;
-        while (elapsed < 0.75f)
+        bool animated = GetComponentInChildren<Animator>() != null;
+        float duration = animated ? 1.25f : 0.75f;
+        while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / 0.75f);
-            transform.localScale = Vector3.Lerp(start, new Vector3(start.x * 1.25f, 0.05f, start.z * 1.25f), t * t);
-            transform.Rotate(Vector3.up, Time.unscaledDeltaTime * 220f, Space.World);
+            float t = Mathf.Clamp01(elapsed / duration);
+            float collapse = animated ? Mathf.InverseLerp(0.68f, 1f, t) : t * t;
+            transform.localScale = Vector3.Lerp(start, new Vector3(start.x * 1.12f, 0.05f, start.z * 1.12f), collapse);
+            if (!animated) transform.Rotate(Vector3.up, Time.unscaledDeltaTime * 220f, Space.World);
             yield return null;
         }
         Destroy(gameObject);

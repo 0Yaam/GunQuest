@@ -1,0 +1,14 @@
+Poly Haven assets are provided under the Creative Commons CC0 1.0 Universal license.
+
+Source: https://polyhaven.com/
+License: https://creativecommons.org/publicdomain/zero/1.0/
+
+Included assets:
+- Kloppenheim 06 (Pure Sky), 4K HDR
+- Nature Reserve Forest, 4K HDR
+- Satara Night, 4K HDR
+- Asphalt 01, 4K diffuse and DirectX normal maps
+- Dirt, 4K diffuse and DirectX normal maps
+- Concrete Pavement, 4K diffuse and DirectX normal maps
+
+The files may be copied, modified, distributed and used commercially without attribution.

@@ -64,7 +64,9 @@ public sealed class GameHud : MonoBehaviour
         menu = Panel("Menu", canvas, Vector2.zero, new Vector2(680, 900), Dark).gameObject;
         var m = menu.GetComponent<RectTransform>();
         Panel("Accent", m, new Vector2(56, 62), new Vector2(44, 4), Accent);
-        Label("G U N Q U E S T", m, 116, 46, 440, 36, 18, Accent);
+        Label("G U N Q U E S T", m, 116, 46, 390, 36, 18, Accent);
+        var emblem = Resources.Load<Texture2D>("Brand/GunQuestEmblem");
+        if (emblem != null) RawTexture("GunQuest emblem", m, emblem, new Vector2(532, 22), new Vector2(92, 92), Color.white);
         operationLine = Label("", m, 56, 99, 560, 25, 14, Muted);
         missionButtons = new Button[GameSession.MissionNames.Length];
         for (int i = 0; i < missionButtons.Length; i++)
@@ -238,6 +240,21 @@ public sealed class GameHud : MonoBehaviour
         label.alignment = alignment;
         label.raycastTarget = false;
         return label;
+    }
+
+    private static RectTransform RawTexture(string name, Transform parent, Texture texture, Vector2 position, Vector2 size, Color color)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(RawImage));
+        var rect = go.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
+        rect.anchoredPosition = new Vector2(position.x, -position.y);
+        rect.sizeDelta = size;
+        var image = go.GetComponent<RawImage>();
+        image.texture = texture;
+        image.color = color;
+        image.raycastTarget = false;
+        return rect;
     }
 
     private Button MakeButton(string text, Transform parent, float x, float y, float w, float h, Color color, UnityEngine.Events.UnityAction action)
