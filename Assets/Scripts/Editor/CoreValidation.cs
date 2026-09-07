@@ -42,7 +42,9 @@ public static class CoreValidation
         try
         {
             var health = go.AddComponent<PlayerHealth>();
-            health.SendMessage("Awake");
+            // Edit Mode does not execute Awake. Invoke the initialization directly;
+            // SendMessage emits ShouldRunBehaviour assertions outside Play Mode in Unity 6.
+            typeof(PlayerHealth).GetMethod("Awake", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Invoke(health, null);
             int deaths = 0;
             health.Died += () => deaths++;
             health.TakeDamage(-10);

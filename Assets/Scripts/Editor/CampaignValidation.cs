@@ -83,6 +83,13 @@ public static class CampaignValidation
                 Require(UnityEngine.Object.FindAnyObjectByType<Unity.AI.Navigation.NavMeshSurface>() != null, "Mission must contain baked navigation.");
                 Require(NavMesh.SamplePosition(session.player.transform.position, out _, 4f, NavMesh.AllAreas), "Operator must begin on the NavMesh.");
                 NavMesh.SamplePosition(session.player.transform.position, out var operatorHit, 4f, NavMesh.AllAreas);
+                Require(session.Objectives != null, "Each map must initialize spatial mission objectives.");
+                for (int relay = 0; relay < MissionObjectives.RelayCount; relay++)
+                {
+                    var relayRoute = new NavMeshPath();
+                    Require(NavMesh.CalculatePath(operatorHit.position, session.Objectives.RelayPosition(relay), NavMesh.AllAreas, relayRoute) && relayRoute.status == NavMeshPathStatus.PathComplete,
+                        "Every relay must be reachable from deployment on every map.");
+                }
                 foreach (var spawn in session.spawnPoints)
                 {
                     Require(NavMesh.SamplePosition(spawn.position, out var spawnHit, 6f, NavMesh.AllAreas), "Every hostile entry must reach the NavMesh.");

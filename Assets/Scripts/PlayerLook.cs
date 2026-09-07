@@ -6,6 +6,7 @@ public class PlayerLook : MonoBehaviour
 {
     public Camera cam;
     private float xRotation = 0f;
+    private PlayerOptions options;
 
     public float xSensitivity = 30f;
     public float ySensitivity = 30f;
@@ -25,6 +26,7 @@ public class PlayerLook : MonoBehaviour
 
     public void ProcessLook(Vector2 input, bool isGamepad = false, float sensitivityMultiplier = 1f)
     {
+        if (options == null) options = Object.FindAnyObjectByType<PlayerOptions>();
         if (cam == null)
         {
             return;
@@ -32,7 +34,7 @@ public class PlayerLook : MonoBehaviour
 
         float scale = (isGamepad ? Time.deltaTime * 5f : 0.015f) * sensitivityMultiplier;
         float mouseX = input.x * scale;
-        float mouseY = input.y * scale;
+        float mouseY = input.y * scale * (options != null && options.InvertY ? -1f : 1f);
 
         // Tính toán xoay camera lên và xuống [9]
         xRotation -= mouseY * ySensitivity;

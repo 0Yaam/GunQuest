@@ -26,6 +26,11 @@ public static class PlayValidation
     private static Enemy trackedEnemy;
     private static float healthBeforeBullet;
     private static bool failed;
+    private static bool interruptedUpload;
+    private static bool leftExtraction;
+    private static bool testedUpgradeCap;
+    private static int lastFrame = -1;
+    private static int lastUpgradeWave = 1;
 
     static PlayValidation()
     {
@@ -70,9 +75,11 @@ public static class PlayValidation
     private static void Tick()
     {
         if (!EditorApplication.isPlaying || EditorApplication.isCompiling) return;
+        if (Time.frameCount == lastFrame) return;
+        lastFrame = Time.frameCount;
         try
         {
-            if (EditorApplication.timeSinceStartup - startedAt > 110) throw new Exception("Play validation timed out at stage " + stage);
+            if (EditorApplication.timeSinceStartup - startedAt > 180) throw new Exception("Play validation timed out at stage " + stage);
             if (failed) throw new Exception("Runtime logged an error; inspect the preceding log.");
             double wait = EditorApplication.timeSinceStartup - stageAt;
             if (session == null) session = UnityEngine.Object.FindAnyObjectByType<GameSession>();
@@ -82,6 +89,9 @@ public static class PlayValidation
                 case 0:
                     Check(session.State == PlayState.Menu && Time.timeScale == 0, "Scene must begin at the deployment menu.");
                     Check(session.Difficulty == GunQuest.Game.Difficulty.Operator, "Operator must be the deterministic validation profile.");
+                    Check(session.Objectives != null && session.Objectives.RelaysSecured == 0, "Every run must initialize three relay objectives.");
+                    Check(!session.Objectives.TryBeginUpload() && !session.PurchaseUpgrade(0), "Menus must reject objective interactions and upgrades.");
+                    Check(session.Options != null && session.Options.FieldOfView >= 65f && session.Options.FieldOfView <= 100f, "Player preferences must initialize inside supported ranges.");
                     session.SetDifficulty(GunQuest.Game.Difficulty.Recruit);
                     Check(session.Difficulty == GunQuest.Game.Difficulty.Recruit, "Menu must allow threat-level changes.");
                     session.SetDifficulty(GunQuest.Game.Difficulty.Operator);
@@ -172,6 +182,9 @@ public static class PlayValidation
                     ClearWave();
                     Check(session.Score == 750 && session.EnemiesRemaining == 0, "Wave completion must award four kills and clear bonus.");
                     Check(session.weapon.Ammo.Reserve == 178, "Wave completion must supply ammo.");
+                    Check(session.UpgradeCredits == 1 && session.PurchaseUpgrade(0), "Clearing a wave must grant a spendable upgrade credit.");
+                    Check(session.UpgradeCredits == 0 && session.weapon.damage == 39f && !session.PurchaseUpgrade(0), "Upgrade must apply once without credit underflow.");
+                    session.CallNextWave();
                     Next();
                     break;
                 case 8:
@@ -187,9 +200,24 @@ public static class PlayValidation
                     }
                     else if (session.EnemiesRemaining > 0)
                     {
+                        Check(!session.PurchaseUpgrade(0), "Upgrades must be unavailable during combat.");
                         ValidateWaveRoles();
                         ClearWave();
                     }
+                    else if (session.Wave < session.totalWaves)
+                    {
+                        if (session.Wave == lastUpgradeWave) return;
+                        lastUpgradeWave = session.Wave;
+                        if (session.UpgradeLevel(0) < 3) Check(session.PurchaseUpgrade(0), "Available credits must purchase damage upgrades between waves.");
+                        else if (!testedUpgradeCap)
+                        {
+                            Check(!session.PurchaseUpgrade(0) && session.UpgradeCredits == 1, "A capped branch must reject purchase without consuming its credit.");
+                            Check(session.PurchaseUpgrade(2) && session.player.maxHealth == 115f, "Vitality must increase maximum health.");
+                            testedUpgradeCap = true;
+                        }
+                        session.CallNextWave();
+                    }
+                    else ValidateObjectives();
                     break;
                 case 9:
                     Check(session.State == PlayState.Menu && session.Wave == 0 && session.Kills == 0, "Restart must restore a fresh menu and run.");
@@ -197,7 +225,7 @@ public static class PlayValidation
                     session.player.TakeDamage(10000);
                     Check(session.State == PlayState.Defeat && Time.timeScale == 0, "Lethal damage must freeze the run and show defeat.");
                     Capture("defeat");
-                    Debug.Log("GUNQUEST PLAY VALIDATION PASSED: menu, navigation, pause, hits, cover, reload, projectile sweep, five waves, victory, restart, defeat.");
+                    Debug.Log("GUNQUEST PLAY VALIDATION PASSED: menu, navigation, pause, hits, cover, reload, projectile sweep, five waves, upgrade credits/caps, relay interruption, extraction reset, victory, restart, defeat.");
                     Finish(0);
                     break;
             }
@@ -207,6 +235,38 @@ public static class PlayValidation
             Debug.LogException(exception);
             Finish(1);
         }
+    }
+
+    private static void ValidateObjectives()
+    {
+        var objective = session.Objectives;
+        Check(session.State == PlayState.Playing, "Clearing all waves must not bypass relay and extraction objectives.");
+        if (objective.RelaysSecured < MissionObjectives.RelayCount)
+        {
+            if (objective.Uploading)
+            {
+                if (!interruptedUpload && objective.Progress > 0.15f)
+                {
+                    Teleport(originalPosition);
+                    interruptedUpload = true;
+                }
+                return;
+            }
+            if (interruptedUpload && objective.RelaysSecured == 0) Check(objective.Progress == 0f, "Leaving a relay must reset upload progress.");
+            Teleport(objective.TargetPosition + Vector3.back * 1.5f);
+            Physics.SyncTransforms();
+            Check(objective.TryBeginUpload(), "Unlocked uncontested relay must accept interaction from inside its ring.");
+            return;
+        }
+        Check(objective.Extracting, "All relays and hostiles must unlock extraction.");
+        if (!leftExtraction && objective.Progress > 0.15f)
+        {
+            Teleport(objective.TargetPosition + Vector3.forward * 8f);
+            leftExtraction = true;
+            return;
+        }
+        if (leftExtraction && objective.Distance > 3.5f) Check(objective.Progress == 0f, "Leaving extraction must reset its countdown.");
+        Teleport(objective.TargetPosition);
     }
 
     private static void Teleport(Vector3 position)

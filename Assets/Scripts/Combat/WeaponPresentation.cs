@@ -12,6 +12,7 @@ public sealed class WeaponPresentation : MonoBehaviour
     private float muzzleUntil;
     private Light muzzleLight;
     private Vector3 home;
+    private PlayerOptions options;
 
     private void Start()
     {
@@ -23,6 +24,7 @@ public sealed class WeaponPresentation : MonoBehaviour
         shotClip = Tone("Rifle shot", 0.15f, 90f, true);
         hitClip = Tone("Hit confirmation", 0.08f, 900f, false);
         home = viewModel.localPosition;
+        options = Object.FindAnyObjectByType<PlayerOptions>();
         muzzleLight = weapon.muzzle.gameObject.AddComponent<Light>();
         muzzleLight.type = LightType.Point;
         muzzleLight.color = new Color(0.3f, 1f, 0.85f);
@@ -38,12 +40,14 @@ public sealed class WeaponPresentation : MonoBehaviour
         recoil = Mathf.MoveTowards(recoil, 0f, Time.deltaTime * 7f);
         muzzleLight.intensity = Time.unscaledTime < muzzleUntil ? 5f : 0f;
         bool aiming = input.IsAiming;
-        float bob = controller.isGrounded ? Mathf.Min(controller.velocity.magnitude, 8f) * 0.0015f : 0f;
+        bool reduced = options != null && options.ReducedMotion;
+        float bob = controller.isGrounded && !reduced ? Mathf.Min(controller.velocity.magnitude, 8f) * 0.0015f : 0f;
         Vector3 target = aiming ? new Vector3(0f, -0.19f, home.z + 0.08f) : home;
-        target += new Vector3(Mathf.Sin(Time.time * 8f) * bob, Mathf.Abs(Mathf.Cos(Time.time * 8f)) * bob, -recoil * 0.07f);
+        target += new Vector3(Mathf.Sin(Time.time * 8f) * bob, Mathf.Abs(Mathf.Cos(Time.time * 8f)) * bob, -recoil * (reduced ? 0.02f : 0.07f));
         viewModel.localPosition = Vector3.Lerp(viewModel.localPosition, target, Time.deltaTime * 14f);
-        viewModel.localRotation = Quaternion.Euler(-recoil * 6f + (weapon.IsReloading ? 24f : 0f), 0f, weapon.IsReloading ? -25f : 0f);
-        weapon.aimCamera.fieldOfView = Mathf.Lerp(weapon.aimCamera.fieldOfView, aiming ? 52f : 75f, Time.deltaTime * 10f);
+        viewModel.localRotation = Quaternion.Euler(-recoil * (reduced ? 1f : 6f) + (weapon.IsReloading ? 24f : 0f), 0f, weapon.IsReloading ? -25f : 0f);
+        float fov = options != null ? options.FieldOfView : 75f;
+        weapon.aimCamera.fieldOfView = Mathf.Lerp(weapon.aimCamera.fieldOfView, aiming ? fov * 0.6933f : fov, Time.deltaTime * 10f);
         var cameraPosition = weapon.aimCamera.transform.localPosition;
         cameraPosition.y = Mathf.Lerp(cameraPosition.y, controller.height - 0.3f, Time.deltaTime * 12f);
         weapon.aimCamera.transform.localPosition = cameraPosition;

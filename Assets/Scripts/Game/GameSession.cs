@@ -35,8 +35,15 @@ public sealed class GameSession : MonoBehaviour
     public int Kills { get; private set; }
     public int ShotsFired { get; private set; }
     public int ShotsHit { get; private set; }
+    public MissionObjectives Objectives { get; private set; }
+    public PlayerOptions Options { get; private set; }
+    public int UpgradeCredits { get; private set; }
+    private readonly int[] upgradeLevels = new int[3];
+    public bool CanUpgrade => Wave > 0 && Wave < totalWaves && enemies.Count == 0 &&
+        (State == SessionState.Playing || State == SessionState.Paused);
+    public int UpgradeLevel(int index) => index >= 0 && index < 3 ? upgradeLevels[index] : 0;
     public float Accuracy => ShotsFired > 0 ? ShotsHit * 100f / ShotsFired : 0f;
-    public string PerformanceRank => State == SessionState.Victory ? CalculateRank(Accuracy, player.GetCurrentHealth(), Elapsed, Difficulty) : "--";
+    public string PerformanceRank => State == SessionState.Victory ? CalculateRank(Accuracy, player.GetCurrentHealth() / player.maxHealth * 100f, Elapsed, Difficulty) : "--";
     public int BestScore { get; private set; }
     public Difficulty Difficulty { get; private set; }
     public int MissionIndex
@@ -73,6 +80,8 @@ public sealed class GameSession : MonoBehaviour
 
     private void Awake()
     {
+        Options = GetComponent<PlayerOptions>();
+        if (Options == null) Options = gameObject.AddComponent<PlayerOptions>();
         Difficulty = (Difficulty)Mathf.Clamp(PlayerPrefs.GetInt("GunQuest.Difficulty", 1), 0, 2);
         LoadBestScore();
         player.Died += OnPlayerDied;
@@ -80,6 +89,36 @@ public sealed class GameSession : MonoBehaviour
         weapon.Hit += OnWeaponHit;
         if (GetComponent<MissionSoundscape>() == null) gameObject.AddComponent<MissionSoundscape>();
         SetState(SessionState.Menu);
+    }
+
+    private void Start()
+    {
+        Objectives = GetComponent<MissionObjectives>();
+        if (Objectives == null) Objectives = gameObject.AddComponent<MissionObjectives>();
+        Objectives.Initialize(this);
+    }
+
+    public bool PurchaseUpgrade(int index)
+    {
+        if (!CanUpgrade || UpgradeCredits <= 0 || index < 0 || index >= 3 || upgradeLevels[index] >= 3) return false;
+        UpgradeCredits--;
+        upgradeLevels[index]++;
+        if (index == 0) weapon.damage += 5f;
+        else if (index == 1) weapon.reloadDuration = Mathf.Max(0.6f, weapon.reloadDuration - 0.25f);
+        else { player.maxHealth += 15f; player.RestoreHealth(30f); }
+        Announce(index == 0 ? "UPGRADE / Rifle damage +5" : index == 1 ? "UPGRADE / Reload time -0.25s" : "UPGRADE / Max health +15, recover 30 health");
+        return true;
+    }
+
+    public void CallNextWave()
+    {
+        if (State == SessionState.Playing && CanUpgrade) waveAt = Time.time;
+    }
+
+    public void CompleteExtraction()
+    {
+        if (State == SessionState.Playing && Wave >= totalWaves && enemies.Count == 0 && Objectives != null && Objectives.IsComplete)
+            Finish(SessionState.Victory);
     }
 
     public void SetDifficulty(Difficulty value)
@@ -93,6 +132,10 @@ public sealed class GameSession : MonoBehaviour
 
     private void LoadBestScore() => BestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
     public static bool IsMissionCleared(int index) => index >= 0 && index < MissionScenes.Length && PlayerPrefs.GetInt("GunQuest.Cleared." + MissionScenes[index], 0) == 1;
+    public static int ClearedMissionCount
+    {
+        get { int count = 0; for (int i = 0; i < MissionScenes.Length; i++) if (IsMissionCleared(i)) count++; return count; }
+    }
 
     public static string CalculateRank(float accuracy, float health, float seconds, Difficulty difficulty)
     {
@@ -138,16 +181,23 @@ public sealed class GameSession : MonoBehaviour
         bool pause = (Keyboard.current?.escapeKey.wasPressedThisFrame ?? false) || (Gamepad.current?.startButton.wasPressedThisFrame ?? false);
         if (pause) TogglePause();
         if (State != SessionState.Playing) return;
+        if (CanUpgrade && Keyboard.current != null)
+        {
+            if (Keyboard.current.digit1Key.wasPressedThisFrame) PurchaseUpgrade(0);
+            if (Keyboard.current.digit2Key.wasPressedThisFrame) PurchaseUpgrade(1);
+            if (Keyboard.current.digit3Key.wasPressedThisFrame) PurchaseUpgrade(2);
+            if (Keyboard.current.enterKey.wasPressedThisFrame) CallNextWave();
+        }
         Elapsed += Time.deltaTime;
         if (Time.time > noticeUntil) Notice = "";
         if (player.transform.position.y < -10f) player.TakeDamage(player.maxHealth);
         if (State != SessionState.Playing) return;
-        if (enemies.Count == 0 && Time.time >= waveAt) SpawnWave();
+        if (enemies.Count == 0 && Wave < totalWaves && Time.time >= waveAt) SpawnWave();
     }
 
     private void SpawnWave()
     {
-        if (Wave >= totalWaves) { Finish(SessionState.Victory); return; }
+        if (Wave >= totalWaves) return;
         Wave++;
         int count = EnemyCountForWave(Difficulty, Wave);
         float difficultyScale = Difficulty == Difficulty.Recruit ? 0.78f : Difficulty == Difficulty.Veteran ? 1.28f : 1f;
@@ -237,13 +287,18 @@ public sealed class GameSession : MonoBehaviour
         Score += Mathf.RoundToInt((100 + Wave * 25) * scoreMultiplier * roleReward);
         if (enemies.Count > 0) return;
         Score += Mathf.RoundToInt(250 * scoreMultiplier);
-        if (Wave >= totalWaves) { Finish(SessionState.Victory); return; }
+        if (Wave >= totalWaves)
+        {
+            Announce("HOSTILES CLEARED / Finish the uplink and reach extraction");
+            return;
+        }
+        UpgradeCredits++;
         float healthReward = Difficulty == Difficulty.Veteran ? 12f : Difficulty == Difficulty.Recruit ? 30f : 20f;
         int ammoReward = Difficulty == Difficulty.Veteran ? 45 : Difficulty == Difficulty.Recruit ? 90 : 60;
         player.RestoreHealth(healthReward);
         weapon.Ammo.Supply(ammoReward);
-        waveAt = Time.time + 7f;
-        Announce($"SECTOR CLEAR / +{healthReward:0} health  +{ammoReward} reserve ammo");
+        waveAt = Time.time + 20f;
+        Announce($"SECTOR CLEAR / +{healthReward:0} health  +{ammoReward} ammo  +1 upgrade credit");
     }
 
     public void Announce(string message) { Notice = message; noticeUntil = Time.time + 4f; }
@@ -258,7 +313,7 @@ public sealed class GameSession : MonoBehaviour
         {
             Score += Mathf.RoundToInt(player.GetCurrentHealth() * 10f);
             PlayerPrefs.SetInt("GunQuest.Cleared." + SceneManager.GetActiveScene().name, 1);
-            if (!HasNextMission) PlayerPrefs.SetInt("GunQuest.CampaignComplete", 1);
+            if (ClearedMissionCount == MissionScenes.Length) PlayerPrefs.SetInt("GunQuest.CampaignComplete", 1);
         }
         if (Score > BestScore)
         {
@@ -277,6 +332,7 @@ public sealed class GameSession : MonoBehaviour
 
     private void SetState(SessionState value)
     {
+        if (Options != null) Options.Save();
         State = value;
         bool playing = value == SessionState.Playing;
         Time.timeScale = playing ? 1f : 0f;
