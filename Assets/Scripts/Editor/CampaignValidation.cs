@@ -82,8 +82,14 @@ public static class CampaignValidation
                 Require(session.spawnPoints.Length >= 4, "Mission must expose at least four hostile approaches.");
                 Require(UnityEngine.Object.FindAnyObjectByType<Unity.AI.Navigation.NavMeshSurface>() != null, "Mission must contain baked navigation.");
                 Require(NavMesh.SamplePosition(session.player.transform.position, out _, 4f, NavMesh.AllAreas), "Operator must begin on the NavMesh.");
+                NavMesh.SamplePosition(session.player.transform.position, out var operatorHit, 4f, NavMesh.AllAreas);
                 foreach (var spawn in session.spawnPoints)
-                    Require(NavMesh.SamplePosition(spawn.position, out _, 6f, NavMesh.AllAreas), "Every hostile entry must reach the NavMesh.");
+                {
+                    Require(NavMesh.SamplePosition(spawn.position, out var spawnHit, 6f, NavMesh.AllAreas), "Every hostile entry must reach the NavMesh.");
+                    var route = new NavMeshPath();
+                    Require(NavMesh.CalculatePath(spawnHit.position, operatorHit.position, NavMesh.AllAreas, route) && route.status == NavMeshPathStatus.PathComplete,
+                        "Hostile entry must have a complete route to the operator after environment reconstruction.");
+                }
                 for (int mission = 0; mission < GameSession.MissionScenes.Length; mission++)
                     Require(Application.CanStreamedLevelBeLoaded(GameSession.MissionScenes[mission]), "Every campaign scene must be in build settings.");
                 Capture(expectedName.ToLowerInvariant() + "-menu");
@@ -98,7 +104,37 @@ public static class CampaignValidation
                 Require(session.Wave == 1 && session.EnemiesRemaining == 4, "Operator difficulty must spawn four enemies in wave one.");
                 foreach (var enemy in UnityEngine.Object.FindObjectsByType<Enemy>())
                     Require(enemy.Agent.isOnNavMesh, "Every spawned enemy must be placed on navigation.");
+                phase = 2;
+                phaseAt = EditorApplication.timeSinceStartup;
+                return;
+            }
+            if (phase == 2 && EditorApplication.timeSinceStartup - phaseAt > 2)
+            {
                 Capture(GameSession.MissionNames[index].ToLowerInvariant() + "-gameplay");
+                var enemy = UnityEngine.Object.FindAnyObjectByType<Enemy>();
+                enemy.Agent.Warp(new Vector3(0, 0, -16));
+                enemy.Agent.isStopped = true;
+                enemy.enabled = false;
+                enemy.GetComponent<StateMachine>().enabled = false;
+                enemy.transform.rotation = Quaternion.Euler(0, 180, 0);
+                phase = 3;
+                phaseAt = EditorApplication.timeSinceStartup;
+                return;
+            }
+            if (phase == 3 && EditorApplication.timeSinceStartup - phaseAt > 0.8)
+            {
+                foreach (var enemy in UnityEngine.Object.FindObjectsByType<Enemy>())
+                {
+                    var visuals = enemy.GetComponentsInChildren<SkinnedMeshRenderer>();
+                    if (visuals.Length == 0) continue;
+                    var bounds = visuals[0].bounds;
+                    foreach (var visual in visuals) bounds.Encapsulate(visual.bounds);
+                    Require(bounds.size.y > 1.5f && bounds.size.y < 3.5f, "Animated enemy must preserve a human-scale visible body.");
+                    Require(Vector3.Distance(bounds.center, enemy.transform.position) < 3f, "Animated body must remain aligned with its combat collider.");
+                    var animator = enemy.GetComponentInChildren<Animator>();
+                    Require(animator != null && animator.HasState(0, Animator.StringToHash("WalkFront_Shoot_AR")), "Enemy must retain its movement animation.");
+                }
+                Capture(GameSession.MissionNames[index].ToLowerInvariant() + "-character-check");
                 UnityEditor.SessionState.SetInt(IndexKey, index + 1);
                 EditorApplication.ExitPlaymode();
             }

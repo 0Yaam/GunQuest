@@ -2,9 +2,9 @@
 
 GunQuest is a compact first-person survival campaign built with Unity 6 and URP. One operator fights through three distinct five-wave operations:
 
-- **Outpost** — a bright military relay with open firing lanes and modular cover.
-- **Blackwood** — a fogbound ancient village built around a corrupted spirit shrine.
-- **Skyline** — a neon midnight district of streets, vehicles and hostile crossfire.
+- **Outpost** — a desert processing station with overhead pipe racks, pressure vessels and a raised service deck.
+- **Blackwood** — an abandoned field laboratory surrounded by a modeled forest and continuous highland terrain.
+- **Skyline** — a midnight industrial district with recessed windows, warm facade lighting and cool street lights.
 
 ## Play
 
@@ -34,19 +34,23 @@ Outpost wind, Blackwood's low forest drone and Skyline's electronic pulse are ge
 
 ## Visual direction
 
-The PC presentation uses 115% render scale, 4x MSAA plus high-quality SMAA, 4K cascaded shadows, ACES tonemapping, restrained bloom, film grain and per-operation color grading. Outpost, Blackwood and Skyline each use a dedicated 4K HDR environment, PBR ground materials, atmospheric particles and local accent lighting. Enemies use the animated PBR sci-fi warrior, while the first-person GQ-30 is baked from its detailed rifle mesh. The deployment menu includes a custom transparent GunQuest emblem.
+The rebuilt environments use a consistent industrial material palette, beveled architectural meshes with world-scaled UVs, actual window reveals, layered ventilation panels, modeled pipes, tank reinforcement bands, accessible stairs and elevated service decks. A continuous sculpted landscape replaces the old box-shaped mountains. Blackwood's canopy consists of 44 textured tree models, not a forest photograph.
+
+The PC presentation uses 115% render scale, 4x MSAA plus high-quality SMAA, 4K cascaded shadows, ACES tonemapping, restrained bloom, per-operation exposure, local reflection probes and broad sky fill. The GQ-30 mesh is centered and angled to show the receiver, with support/trigger gloves and sleeves. The deployment menu hides the first-person weapon and preserves text contrast over the live environment.
 
 The imported asphalt, concrete, dirt and HDR environments under `Assets/ThirdParty/PolyHaven` are CC0 assets from [Poly Haven](https://polyhaven.com/); exact source URLs are recorded in that folder's `LICENSE.txt`.
+
+Current gameplay captures: [Outpost](Documentation/Visuals/outpost.png), [Blackwood](Documentation/Visuals/blackwood.png), [Skyline](Documentation/Visuals/skyline.png). These are rendered Play Mode captures, not concept art.
 
 ## Editor tools
 
 The `GunQuest` menu contains the supported project workflows:
 
-- `Outpost / Generate playable outpost` regenerates all three campaign scenes, materials, enemy prefab and baked NavMeshes.
+- `World / Rebuild industrial campaign` regenerates all three current scenes, beveled meshes, materials, lights and baked NavMeshes. `Outpost / Generate playable outpost` invokes the same builder. These commands replace the generated campaign scenes, so save custom scene work separately before regenerating.
 - `Outpost / Build Windows player` creates `Builds/Windows/GunQuest.exe`.
 - `Validation / Validate combat rules` verifies ammo conservation and health/death rules.
 - `Validation / Run outpost play checks` exercises navigation, combat, cover, pause, all five waves, victory, restart and defeat in Play Mode.
-- `Validation / Run campaign scene checks` opens every operation in Play Mode and verifies metadata, player placement, hostile entrances, navigation and wave-one spawning.
+- `Validation / Run campaign scene checks` verifies every scene, complete navigation routes from all hostile entries, wave spawning, animated enemy scale and alignment. It captures menus, gameplay and separate posed character checks in `Logs/Screenshots`.
 
 Equivalent headless commands from PowerShell:
 

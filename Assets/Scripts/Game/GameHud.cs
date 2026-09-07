@@ -11,6 +11,7 @@ public sealed class GameHud : MonoBehaviour
     private RectTransform canvas;
     private GameObject menu;
     private GameObject hud;
+    private GameObject noticeBacking;
     private Text wave, score, health, ammo, notice, hint, title, subtitle, stats, actionLabel, hitMarker, missionHud, operationLine;
     private Image healthFill, reloadFill, damageOverlay;
     private Button primary;
@@ -20,7 +21,7 @@ public sealed class GameHud : MonoBehaviour
     private float damageAlpha;
     private static readonly Color Teal = new Color(0.28f, 0.94f, 0.79f);
     private static readonly Color Muted = new Color(0.58f, 0.68f, 0.71f);
-    private static readonly Color Dark = new Color(0.025f, 0.05f, 0.065f, 0.93f);
+    private static readonly Color Dark = new Color(0.035f, 0.055f, 0.075f, 0.82f);
     private Color Accent => session != null ? session.missionAccent : Teal;
 
     private void Start()
@@ -44,6 +45,7 @@ public sealed class GameHud : MonoBehaviour
         wave = Label("", h, 60, 78, 300, 38, 28, Color.white);
         Panel("Score", h, new Vector2(1280, 32), new Vector2(280, 108), Dark);
         score = Label("", h, 1300, 47, 240, 75, 23, Color.white, TextAnchor.MiddleRight);
+        noticeBacking = Panel("Transmission backing", h, new Vector2(485, 169), new Vector2(630, 64), new Color(0.015f, 0.025f, 0.035f, 0.72f)).gameObject;
         notice = Label("", h, 400, 165, 800, 42, 23, Accent, TextAnchor.MiddleCenter);
         hint = Label("", h, 500, 208, 600, 32, 18, Muted, TextAnchor.MiddleCenter);
         Panel("Vitals", h, new Vector2(40, 772), new Vector2(300, 90), Dark);
@@ -61,7 +63,7 @@ public sealed class GameHud : MonoBehaviour
         hitMarker = Label("", h, 775, 425, 50, 50, 38, Accent, TextAnchor.MiddleCenter);
         damageOverlay = Panel("Damage feedback", h, Vector2.zero, new Vector2(1600, 900), Color.clear).GetComponent<Image>();
 
-        menu = Panel("Menu", canvas, Vector2.zero, new Vector2(680, 900), Dark).gameObject;
+        menu = Panel("Menu", canvas, Vector2.zero, new Vector2(680, 900), new Color(0.018f, 0.028f, 0.038f, 0.96f)).gameObject;
         var m = menu.GetComponent<RectTransform>();
         Panel("Accent", m, new Vector2(56, 62), new Vector2(44, 4), Accent);
         Label("G U N Q U E S T", m, 116, 46, 390, 36, 18, Accent);
@@ -145,6 +147,8 @@ public sealed class GameHud : MonoBehaviour
         bool playing = session.State == SessionState.Playing;
         hud.SetActive(playing);
         menu.SetActive(!playing);
+        var presentation = session.weapon.GetComponent<WeaponPresentation>();
+        if (presentation != null && presentation.viewModel != null) presentation.viewModel.gameObject.SetActive(playing);
         if (playing) return;
         bool won = session.State == SessionState.Victory;
         bool lost = session.State == SessionState.Defeat;
@@ -188,6 +192,7 @@ public sealed class GameHud : MonoBehaviour
         ammo.text = session.weapon.IsReloading ? "RELOADING" : $"{session.weapon.Ammo.Loaded:00} <color=#778E95>/ {session.weapon.Ammo.Reserve:000}</color>";
         reloadFill.rectTransform.sizeDelta = new Vector2(300f * session.weapon.ReloadProgress, 4f);
         notice.text = session.Notice;
+        noticeBacking.SetActive(!string.IsNullOrEmpty(session.Notice));
         hint.text = session.EnemiesRemaining == 0 ? $"NEXT WAVE IN {Mathf.CeilToInt(session.NextWaveIn)}s / resupply and reposition" : session.weapon.Ammo.Loaded == 0 ? "R / RELOAD" : "";
         if (Time.unscaledTime > hitUntil) hitMarker.text = "";
         damageAlpha = Mathf.MoveTowards(damageAlpha, 0f, Time.deltaTime * 0.7f);

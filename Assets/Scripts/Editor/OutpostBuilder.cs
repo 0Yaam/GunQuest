@@ -24,6 +24,11 @@ public static class OutpostBuilder
     [MenuItem("GunQuest/Outpost/Generate playable outpost")]
     public static void Generate()
     {
+        EnvironmentRebuild.Generate();
+    }
+
+    public static void GenerateLegacy()
+    {
         if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
         Directory.CreateDirectory(ArtPath);
         AssetDatabase.Refresh();
@@ -337,7 +342,7 @@ public static class OutpostBuilder
         EditorSceneManager.SaveScene(scene, SkylineScenePath);
     }
 
-    private static void CreateMissionActors(string code, string name, string description, string victory, Color accent,
+    internal static void CreateMissionActors(string code, string name, string description, string victory, Color accent,
         Vector3 playerStart, Vector3[] spawns, Vector3[] supplies)
     {
         var player = CreatePlayer(playerStart);
@@ -385,7 +390,7 @@ public static class OutpostBuilder
         volume.sharedProfile = profile;
     }
 
-    private static void BakeNavigation(Transform geometry, string assetPath)
+    internal static void BakeNavigation(Transform geometry, string assetPath)
     {
         var surface = geometry.gameObject.AddComponent<NavMeshSurface>();
         surface.collectObjects = CollectObjects.Children;
@@ -463,6 +468,14 @@ public static class OutpostBuilder
         presentation.weapon = weapon;
         presentation.viewModel = gun;
         return player;
+    }
+
+    internal static void PrepareActorMaterials()
+    {
+        dark = Material("Graphite", new Color(0.12f, 0.15f, 0.18f));
+        concrete = Material("Concrete", new Color(0.45f, 0.48f, 0.5f));
+        teal = Material("Signal teal", new Color(0.15f, 0.75f, 0.61f), true);
+        orange = Material("Signal amber", new Color(1f, 0.32f, 0.08f), true);
     }
 
     private static Enemy CreateEnemy()
