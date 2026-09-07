@@ -2,13 +2,13 @@
 
 GunQuest is a first-person survival campaign built with Unity 6 and URP. One operator links three relays, fights through five waves and extracts alive in each operation:
 
-- **Outpost** — a desert processing station with overhead pipe racks, pressure vessels and a raised service deck.
-- **Blackwood** — an abandoned field laboratory surrounded by a modeled forest and continuous highland terrain.
+- **Blackwood / First Signal** — the opening chapter: a conifer valley, ranger checkpoint, creek bridge and western ford, timber station and signal ridge.
+- **Outpost / Chain of Custody** — a desert processing station with overhead pipe racks, pressure vessels and a raised service deck.
 - **Skyline** — a midnight industrial district with recessed windows, warm facade lighting and cool street lights.
 
 ## Play
 
-Open the project with Unity `6000.4.8f1`, load any scene in `Assets/Scenes`, and enter Play Mode. The deployment screen can switch between all three operations, and victory advances to the next mission. You can also launch the prebuilt Windows version at `Builds/Windows/GunQuest.exe` after running the build command below.
+Open the project with Unity `6000.4.8f1`, load `Assets/Scenes/Blackwood.unity`, and enter Play Mode. The Windows build also starts in Blackwood. The deployment screen can switch between all three operations; victory follows Blackwood → Outpost → Skyline. Existing records remain keyed by scene name. Launch the prebuilt Windows version at `Builds/Windows/GunQuest.exe` after running the build command below.
 
 | Input | Action |
 | --- | --- |
@@ -51,21 +51,24 @@ First-person feedback includes distance-driven footsteps, quieter crouched steps
 
 ## Visual direction
 
-The rebuilt environments use a consistent industrial material palette, beveled architectural meshes with world-scaled UVs, actual window reveals, layered ventilation panels, modeled pipes, tank reinforcement bands, accessible stairs and elevated service decks. A continuous sculpted landscape replaces the old box-shaped mountains. Blackwood's canopy consists of 44 textured tree models, not a forest photograph.
+Blackwood is a purpose-built forest level, not an industrial arena with trees added. Its native Unity terrain has saved dirt-trail, leaf-litter and granite-bank layers. Photogrammetric firs have three geometry LODs; scanned ferns, saplings, mossy rocks and deadwood form the understory. An authored trail connects the checkpoint, creek crossing, timber ranger station and communications mast. The western ford and footpath provide an alternate route. Water has animated surface normals and depth-softened banks; the palette uses cool air, muted greens and warm practical lamps. See [Blackwood's design and story](Documentation/BLACKWOOD-DESIGN.md).
+
+Outpost and Skyline retain their distinct industrial architecture: beveled meshes, recessed windows, layered ventilation panels, pipes, tank reinforcement bands, accessible stairs and raised service decks. Their layouts are not replaced by the forest builder.
 
 The PC presentation uses 115% render scale, 4x MSAA plus high-quality SMAA, 4K cascaded shadows, ACES tonemapping, restrained bloom, per-operation exposure, local reflection probes and broad sky fill. The GQ-30 mesh is centered and angled to show the receiver, with support/trigger gloves and sleeves. The deployment menu hides the first-person weapon and preserves text contrast over the live environment.
 
-The imported asphalt, concrete, dirt and HDR environments under `Assets/ThirdParty/PolyHaven` are CC0 assets from [Poly Haven](https://polyhaven.com/); exact source URLs are recorded in that folder's `LICENSE.txt`.
+The imported ground materials, HDR environments and forest scans are CC0 assets from [Poly Haven](https://polyhaven.com/). Exact source URLs and derivative notes are recorded under `Assets/ThirdParty/PolyHaven` and `Assets/ThirdParty/ForestScans`. `Tools/FetchForestAssets.ps1` downloads and verifies the forest sources. `Tools/PrepareFir.py` prepares game geometry LODs in Blender; the high-density original stays outside Git under ignored `Logs/ForestSource`.
 
-Current gameplay captures: [Outpost](Documentation/Visuals/outpost.png), [Blackwood](Documentation/Visuals/blackwood.png), [Skyline](Documentation/Visuals/skyline.png). These are rendered Play Mode captures, not concept art.
+Forest release captures: [deployment](Documentation/Visuals/blackwood-menu.png), [trail](Documentation/Visuals/blackwood.png), [creek](Documentation/Visuals/blackwood-creek.png), [station](Documentation/Visuals/blackwood-station.png). These are offscreen renders of the real standalone camera and UI, not concept art. [Outpost](Documentation/Visuals/outpost.png) and [Skyline](Documentation/Visuals/skyline.png) retain their earlier environment captures.
 
-The [field guide and preferences panel](Documentation/Visuals/field-guide.png) explains the full operation loop. See the [manual playtest checklist](Documentation/PLAYTEST.md) for remaining hardware/input checks and current scope limitations.
+The expedition UI uses a narrow left deployment panel, a separate options/field-guide notebook and a compact gameplay HUD. See the [field guide](Documentation/Visuals/field-guide.png) and [manual playtest checklist](Documentation/PLAYTEST.md) for the operation loop and current scope limitations.
 
 ## Editor tools
 
 The `GunQuest` menu contains the supported project workflows:
 
 - `World / Rebuild industrial campaign` regenerates all three current scenes, beveled meshes, materials, lights and baked NavMeshes. `Outpost / Generate playable outpost` invokes the same builder. These commands replace the generated campaign scenes, so save custom scene work separately before regenerating.
+- `World / Build Blackwood - First Signal` rebuilds only the forest geometry/navigation, updates the three chapters' narrative/UI and makes Blackwood the first build scene. Save custom scene work separately before regenerating.
 - `Outpost / Build Windows player` creates `Builds/Windows/GunQuest.exe`.
 - `Validation / Validate combat rules` verifies ammo conservation and health/death rules.
 - `Validation / Run outpost play checks` exercises navigation, combat, cover, pause, all five waves, upgrade credit/cap rules, interrupted relay uploads, extraction reset, victory, restart and defeat in Play Mode.
@@ -77,6 +80,7 @@ Equivalent headless commands from PowerShell:
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -nographics -quit -projectPath . -executeMethod CoreValidation.Run -logFile Logs/core-validation.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod PlayValidation.Run -logFile Logs/play-validation.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod CampaignValidation.Run -logFile Logs/campaign-validation.log
+& 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod ForestValidation.Run -logFile Logs/forest-views.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -nographics -quit -projectPath . -executeMethod OutpostBuilder.BuildWindows -logFile Logs/windows-build.log
 ```
 

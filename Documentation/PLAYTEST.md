@@ -2,7 +2,18 @@
 
 This checklist describes the current local Windows build. Automated checks complement, but do not replace, human playtesting.
 
-## Automated verification / 2026-09-07
+## Forest chapter verification / 2026-09-07
+
+- `Logs/forest-views.log`: PASS — Blackwood first, expedition HUD, persistent dirt-trail paint, complete paths to all three authored relays, physical bridge traversal without jumping, and four vista previews.
+- `Logs/forest-core.log`: PASS — ammo, health/death and threat-profile rules.
+- `Logs/forest-play.log`: PASS — full five-wave Outpost regression, projectile/cover checks, upgrades, interrupted uploads, extraction reset, victory/restart/defeat and options.
+- `Logs/forest-campaign.log`: PASS — reordered three-scene campaign, spawn routes, all relay paths, wave spawning and character alignment.
+- `Logs/forest-windows.log`: PASS — Windows build with Blackwood first, approximately 584 MB reported build content.
+- `Logs/forest-player.log`: PASS — standalone boot, usable deployment/options/guide actions, pause and seven nonblank offscreen renders. No managed gameplay errors in this smoke test. Desktop presentation and physical input still require a visible human playtest.
+
+These checks do not certify a full forest playthrough, controller ergonomics or performance on other hardware. New creature types, boss fights, additional weapons and inventory are still outside this environment milestone.
+
+## Earlier operation-loop verification / 2026-09-07
 
 - `Logs/completion-play.log`: PASS — full five-wave Outpost run, combat/cover/reload/projectile checks, upgrade spending and caps, contested/interrupted uploads, pause during upload, extraction reset, victory/restart/defeat, option bounds/runtime graphics copies, and reload/empty-chamber event counts.
 - `Logs/completion-campaign.log`: PASS — all three scenes, spawn routes, complete paths to all nine relay positions, wave-one spawning, animated character scale/alignment.

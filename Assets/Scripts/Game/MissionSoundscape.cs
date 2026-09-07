@@ -19,7 +19,7 @@ public sealed class MissionSoundscape : MonoBehaviour
         ambience.loop = true;
         ambience.playOnAwake = false;
         ambience.spatialBlend = 0f;
-        ambienceClip = CreateAmbience(session.MissionIndex);
+        ambienceClip = CreateAmbience(session.missionName == "BLACKWOOD" ? 1 : session.missionName == "SKYLINE" ? 2 : 0);
         ambience.clip = ambienceClip;
         ambience.volume = 0f;
         ambience.Play();

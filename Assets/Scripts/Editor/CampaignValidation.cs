@@ -16,8 +16,8 @@ public static class CampaignValidation
     private const string DifficultyKey = "GunQuest.CampaignValidation.Difficulty";
     private static readonly string[] ScenePaths =
     {
-        OutpostBuilder.ScenePath,
         OutpostBuilder.BlackwoodScenePath,
+        OutpostBuilder.ScenePath,
         OutpostBuilder.SkylineScenePath
     };
     private static int phase;
@@ -119,7 +119,8 @@ public static class CampaignValidation
             {
                 Capture(GameSession.MissionNames[index].ToLowerInvariant() + "-gameplay");
                 var enemy = UnityEngine.Object.FindAnyObjectByType<Enemy>();
-                enemy.Agent.Warp(new Vector3(0, 0, -16));
+                Vector3 posePoint = session.player.transform.position + session.player.transform.forward * 7;
+                if (NavMesh.SamplePosition(posePoint, out var poseHit, 5f, NavMesh.AllAreas)) enemy.Agent.Warp(poseHit.position);
                 enemy.Agent.isStopped = true;
                 enemy.enabled = false;
                 enemy.GetComponent<StateMachine>().enabled = false;
@@ -155,30 +156,7 @@ public static class CampaignValidation
 
     private static void Capture(string name)
     {
-        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
-        Directory.CreateDirectory("Logs/Screenshots");
-        var camera = session.weapon.aimCamera;
-        var canvas = UnityEngine.Object.FindAnyObjectByType<Canvas>();
-        var texture = new RenderTexture(1600, 900, 24);
-        var oldActive = RenderTexture.active;
-        var oldTarget = camera.targetTexture;
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = camera;
-        canvas.planeDistance = 0.1f;
-        camera.targetTexture = texture;
-        Canvas.ForceUpdateCanvases();
-        camera.Render();
-        RenderTexture.active = texture;
-        var image = new Texture2D(1600, 900, TextureFormat.RGB24, false);
-        image.ReadPixels(new Rect(0, 0, 1600, 900), 0, 0);
-        image.Apply();
-        File.WriteAllBytes("Logs/Screenshots/" + name + ".png", image.EncodeToPNG());
-        camera.targetTexture = oldTarget;
-        RenderTexture.active = oldActive;
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        UnityEngine.Object.DestroyImmediate(image);
-        texture.Release();
-        UnityEngine.Object.DestroyImmediate(texture);
+        VisualCapture.Capture(session.weapon.aimCamera,name);
     }
 
     private static void Require(bool condition, string message) => CoreValidation.Require(condition, message);

@@ -1,0 +1,24 @@
+Poly Haven forest assets — CC0 1.0 Universal.
+https://polyhaven.com/license
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Rock Moss Set 01 — Kless Gyzen
+https://polyhaven.com/a/rock_moss_set_01
+Fern 02 — Rico Cilliers / Rob Tuytel
+https://polyhaven.com/a/fern_02
+Dead Tree Trunk
+https://polyhaven.com/a/dead_tree_trunk
+Pine Sapling Small
+https://polyhaven.com/a/pine_sapling_small
+Forest Leaves 02 — Rob Tuytel
+https://polyhaven.com/a/forest_leaves_02
+Old Planks 02
+https://polyhaven.com/a/old_planks_02
+Fir Tree 01
+https://polyhaven.com/a/fir_tree_01
+Fir_0_LOD0..2 and Fir_1_LOD0..2 are geometry-decimated derivatives of
+the first two source trees, prepared with Tools/PrepareFir.py in Blender.
+
+Downloaded through the official Poly Haven API. Tools/FetchForestAssets.ps1
+selects source files and verifies their published MD5 checksums.
+Models, maps and derived Unity materials retain this CC0 license.

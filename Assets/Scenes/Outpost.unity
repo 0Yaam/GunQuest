@@ -25630,7 +25630,7 @@ GameObject:
   m_Component:
   - component: {fileID: 902779014}
   - component: {fileID: 902779013}
-  - component: {fileID: 902779012}
+  - component: {fileID: 902779015}
   m_Layer: 0
   m_Name: Operation director
   m_TagString: Untagged
@@ -25638,19 +25638,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &902779012
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 902779011}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4bef7dba0c2504147be2632e063ded4f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameHud
-  session: {fileID: 902779013}
 --- !u!114 &902779013
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25663,16 +25650,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1eaaf6ee54559244a766801dbe4c337, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameSession
-  missionCode: 01
+  missionCode: 02
   missionName: OUTPOST
-  missionDescription: 'A refinery at the edge of the desert.
+  missionDescription: 'CHAIN OF CUSTODY
 
-    Defend the uplink
-    through five hostile waves.'
-  victoryDescription: 'The transmission is secure.
+    The recovered patrol log leads to Cargo
+    07. Secure the refinery''s processing records and identify where the shipment
+    went next.'
+  victoryDescription: 'The transfer records identify Skyline''s command transmitter.
 
-    All hostile contacts eliminated.'
+    Cut
+    the source of the blockade.'
   missionAccent: {r: 1, g: 0.65, b: 0.28, a: 1}
+  relayAnchors: []
+  relayLabels: []
+  relayReports: []
   player: {fileID: 242829801}
   weapon: {fileID: 242829799}
   enemyPrefab: {fileID: 3927669997219685602, guid: 8f55f0f870bd73641978c0a3cf80d98e, type: 3}
@@ -25697,6 +25689,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &902779015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 902779011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f6c44a9948db154cb7e1e34c354cd5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ExpeditionHud
+  session: {fileID: 902779013}
 --- !u!1 &903611282
 GameObject:
   m_ObjectHideFlags: 0

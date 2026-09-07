@@ -14,8 +14,8 @@ namespace GunQuest.Game
 
 public sealed class GameSession : MonoBehaviour
 {
-    public static readonly string[] MissionScenes = { "Outpost", "Blackwood", "Skyline" };
-    public static readonly string[] MissionNames = { "OUTPOST", "BLACKWOOD", "SKYLINE" };
+    public static readonly string[] MissionScenes = { "Blackwood", "Outpost", "Skyline" };
+    public static readonly string[] MissionNames = { "BLACKWOOD", "OUTPOST", "SKYLINE" };
 
     [Header("Mission")]
     public string missionCode = "01";
@@ -23,6 +23,9 @@ public sealed class GameSession : MonoBehaviour
     [TextArea(2, 3)] public string missionDescription = "An isolated station. Five hostile waves.\nOne operator to hold the perimeter.";
     [TextArea(2, 3)] public string victoryDescription = "All hostile waves eliminated.\nThe outpost is yours.";
     public Color missionAccent = new Color(0.28f, 0.94f, 0.79f);
+    public Transform[] relayAnchors;
+    public string[] relayLabels;
+    [TextArea(2, 4)] public string[] relayReports;
     [Header("Combat")]
     public PlayerHealth player;
     public PlayerWeapon weapon;

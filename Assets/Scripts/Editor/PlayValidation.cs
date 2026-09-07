@@ -204,7 +204,7 @@ public static class PlayValidation
                     {
                         Check(session.Kills == 40 && session.Wave == 5, "All five waves must contain forty total enemies.");
                         Check(session.ShotsFired == 2 && session.ShotsHit == 1 && Mathf.Approximately(session.Accuracy, 50f), "Mission stats must track fired and connected shots.");
-                        Check(GameSession.IsMissionCleared(0), "Victory must mark the active mission as cleared.");
+                        Check(GameSession.IsMissionCleared(session.MissionIndex), "Victory must mark the active mission as cleared.");
                         Capture("victory");
                         session.Restart();
                         session = null;
@@ -386,30 +386,7 @@ public static class PlayValidation
 
     private static void Capture(string name)
     {
-        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
-        Directory.CreateDirectory("Logs/Screenshots");
-        var cam = session.weapon.aimCamera;
-        var canvas = UnityEngine.Object.FindAnyObjectByType<Canvas>();
-        var texture = new RenderTexture(1600, 900, 24);
-        var previous = RenderTexture.active;
-        var oldTarget = cam.targetTexture;
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = cam;
-        canvas.planeDistance = 0.1f;
-        cam.targetTexture = texture;
-        Canvas.ForceUpdateCanvases();
-        cam.Render();
-        RenderTexture.active = texture;
-        var image = new Texture2D(1600, 900, TextureFormat.RGB24, false);
-        image.ReadPixels(new Rect(0, 0, 1600, 900), 0, 0);
-        image.Apply();
-        File.WriteAllBytes("Logs/Screenshots/" + name + ".png", image.EncodeToPNG());
-        cam.targetTexture = oldTarget;
-        RenderTexture.active = previous;
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        UnityEngine.Object.DestroyImmediate(image);
-        texture.Release();
-        UnityEngine.Object.DestroyImmediate(texture);
+        VisualCapture.Capture(session.weapon.aimCamera,name);
     }
 
     private static void Finish(int code)

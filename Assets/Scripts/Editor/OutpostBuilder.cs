@@ -877,7 +877,7 @@ public static class OutpostBuilder
         Directory.CreateDirectory("Builds/Windows");
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
-            scenes = new[] { ScenePath, BlackwoodScenePath, SkylineScenePath },
+            scenes = new[] { BlackwoodScenePath, ScenePath, SkylineScenePath },
             locationPathName = "Builds/Windows/GunQuest.exe",
             target = BuildTarget.StandaloneWindows64,
             options = BuildOptions.None

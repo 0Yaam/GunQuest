@@ -51,7 +51,7 @@ public static class EnvironmentRebuild
                 "An abandoned research station in the highlands.\nSecure the relay beneath the forest canopy.",
                 "A rain-soaked industrial district after dark.\nBreak the blockade and cut the transmission."
             };
-            OutpostBuilder.CreateMissionActors("0" + (map + 1), GameSession.MissionNames[map], descriptions[map],
+            OutpostBuilder.CreateMissionActors("0" + (map == 0 ? 2 : map == 1 ? 1 : 3), new[] { "OUTPOST", "BLACKWOOD", "SKYLINE" }[map], descriptions[map],
                 "The transmission is secure.\nAll hostile contacts eliminated.", map == 0 ? new Color(1f, 0.65f, 0.28f) : new Color(0.30f, 0.81f, 0.91f),
                 new Vector3(0, 0.2f, -23),
                 new[] { new Vector3(-24, 0, -23), new Vector3(24, 0, -23), new Vector3(-8, 0, 24), new Vector3(8, 0, 24) },
@@ -63,6 +63,7 @@ public static class EnvironmentRebuild
             new EditorBuildSettingsScene(scenes[0], true), new EditorBuildSettingsScene(scenes[1], true), new EditorBuildSettingsScene(scenes[2], true)
         };
         AssetDatabase.SaveAssets();
+        ForestChapterBuilder.Generate();
         Debug.Log("GUNQUEST WORLD REBUILD PASSED: three complete industrial environments.");
     }
 
@@ -408,8 +409,10 @@ public static class EnvironmentRebuild
         light.type = LightType.Point; light.color = color; light.intensity = intensity; light.range = range;
     }
 
-    private static void RefineViewModel()
+    internal static void RefineViewModel()
     {
+        if (rubber == null) rubber = AssetDatabase.LoadAssetAtPath<Material>(Art + "/Dark seals.mat");
+        if (steel == null) steel = AssetDatabase.LoadAssetAtPath<Material>(Art + "/Brushed gunmetal.mat");
         var weapon = Object.FindAnyObjectByType<PlayerWeapon>();
         var presentation = weapon.GetComponent<WeaponPresentation>();
         var gun = presentation.viewModel;

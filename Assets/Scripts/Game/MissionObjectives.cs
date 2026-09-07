@@ -16,7 +16,8 @@ public sealed class MissionObjectives : MonoBehaviour
     public bool Unlocked => RelaysSecured < RelayCount && session.Wave >= RequiredWave;
     public Vector3 TargetPosition => RelaysSecured < RelayCount ? relayPositions[RelaysSecured] : extractionPosition;
     public float Distance => Vector3.Distance(session.player.transform.position, TargetPosition);
-    public string TargetName => RelaysSecured < RelayCount ? $"RELAY {RelaysSecured + 1} / {RelayCount}" : "EXTRACTION";
+    public string TargetName => RelaysSecured < RelayCount ?
+        (session.relayLabels != null && session.relayLabels.Length > RelaysSecured ? session.relayLabels[RelaysSecured] : $"RELAY {RelaysSecured + 1} / {RelayCount}") : "EXTRACTION";
     public string Instruction
     {
         get
@@ -48,11 +49,12 @@ public sealed class MissionObjectives : MonoBehaviour
         active = Material("Active objective", owner.missionAccent, true);
         complete = Material("Secured objective", new Color(0.25f, 0.85f, 0.40f), true);
         dormant = Material("Inactive objective", new Color(0.18f, 0.24f, 0.28f), false);
-        float side = owner.MissionIndex == 1 ? -1f : 1f;
+        float side = owner.missionName == "BLACKWOOD" ? -1f : 1f;
         Vector3[] locations = { new Vector3(-4f * side, 0, -9), new Vector3(4f * side, 0, 7), new Vector3(-4f * side, 0, 21) };
         for (int i = 0; i < RelayCount; i++)
         {
-            relayPositions[i] = ReachablePosition(locations[i]);
+            Vector3 requested = owner.relayAnchors != null && owner.relayAnchors.Length > i && owner.relayAnchors[i] != null ? owner.relayAnchors[i].position : locations[i];
+            relayPositions[i] = ReachablePosition(requested);
             var root = new GameObject("Mission relay " + (i + 1)).transform;
             root.SetParent(transform);
             root.position = relayPositions[i];
@@ -127,7 +129,8 @@ public sealed class MissionObjectives : MonoBehaviour
                 RelaysSecured++;
                 Uploading = false;
                 progressSeconds = Progress = 0;
-                session.Announce($"RELAY SECURED / {RelaysSecured} of {RelayCount} linked");
+                string report = session.relayReports != null && session.relayReports.Length >= RelaysSecured ? session.relayReports[RelaysSecured - 1] : $"RELAY SECURED / {RelaysSecured} of {RelayCount} linked";
+                session.Announce(report);
             }
         }
         else if (Extracting)
