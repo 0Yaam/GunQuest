@@ -2,6 +2,15 @@
 
 This checklist describes the current local Windows build. Automated checks complement, but do not replace, human playtesting.
 
+## Automated verification / 2026-09-07
+
+- `Logs/completion-play.log`: PASS — full five-wave Outpost run, combat/cover/reload/projectile checks, upgrade spending and caps, contested/interrupted uploads, pause during upload, extraction reset, victory/restart/defeat, option bounds/runtime graphics copies, and reload/empty-chamber event counts.
+- `Logs/completion-campaign.log`: PASS — all three scenes, spawn routes, complete paths to all nine relay positions, wave-one spawning, animated character scale/alignment.
+- `Logs/completion-windows.log`: PASS — Windows build, 292,850,544 reported bytes.
+- `Logs/completion-player.log`: standalone Windows player launched and remained responsive; no managed gameplay exceptions were found during startup. This is a boot smoke test, not an automated standalone playthrough.
+
+Unity's editor-only SearchDatabase startup exception remains in the batch logs. The play validator excludes only that known editor stack, not gameplay errors. Unity analytics could not connect to its remote configuration endpoint during the standalone boot check; offline startup still proceeded. Listening quality, controller ergonomics and the aspect-ratio matrix below still need human review.
+
 ## Mission loop
 
 - Deploy in each of Outpost, Blackwood and Skyline at the selected difficulty.

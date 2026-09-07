@@ -73,6 +73,7 @@ public sealed class GameSession : MonoBehaviour
     public float Elapsed { get; private set; }
     public string Notice { get; private set; } = "";
     public event System.Action StateChanged;
+    public event System.Action Transmission;
     private readonly HashSet<EnemyHealth> enemies = new HashSet<EnemyHealth>();
     private readonly int[] roleCounts = new int[4];
     private float waveAt;
@@ -96,6 +97,7 @@ public sealed class GameSession : MonoBehaviour
         Objectives = GetComponent<MissionObjectives>();
         if (Objectives == null) Objectives = gameObject.AddComponent<MissionObjectives>();
         Objectives.Initialize(this);
+        if (player.GetComponent<OperatorAudio>() == null) player.gameObject.AddComponent<OperatorAudio>();
     }
 
     public bool PurchaseUpgrade(int index)
@@ -301,7 +303,7 @@ public sealed class GameSession : MonoBehaviour
         Announce($"SECTOR CLEAR / +{healthReward:0} health  +{ammoReward} ammo  +1 upgrade credit");
     }
 
-    public void Announce(string message) { Notice = message; noticeUntil = Time.time + 4f; }
+    public void Announce(string message) { Notice = message; noticeUntil = Time.time + 4f; Transmission?.Invoke(); }
     private void OnWeaponFired() => ShotsFired++;
     private void OnWeaponHit(bool killed) => ShotsHit++;
     private void OnPlayerDied() => Finish(SessionState.Defeat);

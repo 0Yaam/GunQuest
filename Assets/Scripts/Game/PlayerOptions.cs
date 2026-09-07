@@ -16,7 +16,8 @@ public sealed class PlayerOptions : MonoBehaviour
 
     private void Awake()
     {
-        FieldOfView = Mathf.Clamp(PlayerPrefs.GetFloat("GunQuest.FOV", 75f), 65f, 100f);
+        float storedFov = PlayerPrefs.GetFloat("GunQuest.FOV", 75f);
+        FieldOfView = float.IsFinite(storedFov) ? Mathf.Clamp(storedFov, 65f, 100f) : 75f;
         ReducedMotion = PlayerPrefs.GetInt("GunQuest.ReducedMotion", 0) == 1;
         InvertY = PlayerPrefs.GetInt("GunQuest.InvertY", 0) == 1;
         FrameLimit = PlayerPrefs.GetInt("GunQuest.FrameLimit", 1) == 1;
@@ -37,6 +38,7 @@ public sealed class PlayerOptions : MonoBehaviour
 
     public void SetFieldOfView(float value)
     {
+        if (!float.IsFinite(value)) return;
         FieldOfView = Mathf.Clamp(value, 65f, 100f);
         PlayerPrefs.SetFloat("GunQuest.FOV", FieldOfView);
     }

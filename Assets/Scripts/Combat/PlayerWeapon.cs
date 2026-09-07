@@ -15,6 +15,9 @@ public sealed class PlayerWeapon : MonoBehaviour
     public float ReloadProgress => IsReloading ? Mathf.Clamp01(1f - (reloadEnd - Time.time) / reloadDuration) : 0f;
     public event System.Action<bool> Hit;
     public event System.Action Fired;
+    public event System.Action ReloadStarted;
+    public event System.Action ReloadCompleted;
+    public event System.Action DryFired;
     private float nextShot;
     private float reloadEnd;
     private PlayerHealth health;
@@ -33,6 +36,7 @@ public sealed class PlayerWeapon : MonoBehaviour
         {
             Ammo.Reload();
             IsReloading = false;
+            ReloadCompleted?.Invoke();
         }
     }
 
@@ -41,12 +45,19 @@ public sealed class PlayerWeapon : MonoBehaviour
         if (Time.timeScale == 0f || IsReloading || !Ammo.CanReload || (health != null && health.IsDead)) return;
         IsReloading = true;
         reloadEnd = Time.time + reloadDuration;
+        ReloadStarted?.Invoke();
     }
 
     public bool TryFire()
     {
         if (aimCamera == null || Time.timeScale == 0f || IsReloading || Time.time < nextShot || (health != null && health.IsDead)) return false;
-        if (!Ammo.TryFire()) { BeginReload(); return false; }
+        if (!Ammo.TryFire())
+        {
+            nextShot = Time.time + 0.25f;
+            DryFired?.Invoke();
+            BeginReload();
+            return false;
+        }
         nextShot = Time.time + shotInterval;
         var ray = aimCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f));
         Vector3 end = ray.GetPoint(150f);

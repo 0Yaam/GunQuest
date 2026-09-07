@@ -31,7 +31,7 @@ Health and ammunition caches are positioned along each arena's riskier routes. C
 
 Follow the HUD marker to the three physical relay consoles. Relays unlock sequentially in waves 1, 3 and 5. Press E (or the controller's west button) within 3.2 metres to start a five-second upload. Stay near the console: leaving the ring or allowing a living hostile within five metres cancels the upload and resets its progress. Completed relays stay secured for the rest of the run; unfinished relays can still be linked after wave five.
 
-Clearing all hostiles does **not** immediately win the mission. After all three relays are linked and all five waves are cleared, return to the green extraction ring at deployment and remain inside for five seconds. Leaving resets the extraction countdown. Pause freezes both timers. Mission completion, best score and rank are saved only according to the result; campaign completion requires all three maps to be cleared, not just Skyline.
+Clearing all hostiles does **not** immediately win the mission. After all three relays are linked and all five waves are cleared, return to the green extraction ring at deployment and remain inside for five seconds. Leaving resets the extraction countdown. Pause freezes both timers. Completed-map records and best scores persist; rank is shown on the result screen. Campaign completion requires all three maps to be cleared, not just Skyline.
 
 Between waves, there is a 20-second resupply window. Each of the first four clears awards one upgrade credit. Buy +5 rifle damage, -0.25 seconds reload time, or +15 maximum health with 30 immediate healing. Each branch supports three ranks. Upgrades cannot be purchased during combat and reset when restarting or moving to another operation. Press Escape to make the same purchases with the mouse/controller while paused; the field guide also offers a next-wave button.
 
@@ -47,6 +47,8 @@ Each victory records a per-map, per-difficulty best score and awards a performan
 
 Outpost wind, Blackwood's low forest drone and Skyline's electronic pulse are generated at runtime, so each operation has its own lightweight soundscape. Victory and defeat have dedicated stingers, and both audio level and look sensitivity are adjustable from every menu.
 
+First-person feedback includes distance-driven footsteps, quieter crouched steps, landings, magazine/bolt reload cues, a rate-limited empty-chamber click, armor impacts, radio notifications and a restrained critical-health warning. Operator cues pause with gameplay and are released when the run ends.
+
 ## Visual direction
 
 The rebuilt environments use a consistent industrial material palette, beveled architectural meshes with world-scaled UVs, actual window reveals, layered ventilation panels, modeled pipes, tank reinforcement bands, accessible stairs and elevated service decks. A continuous sculpted landscape replaces the old box-shaped mountains. Blackwood's canopy consists of 44 textured tree models, not a forest photograph.
@@ -56,6 +58,8 @@ The PC presentation uses 115% render scale, 4x MSAA plus high-quality SMAA, 4K c
 The imported asphalt, concrete, dirt and HDR environments under `Assets/ThirdParty/PolyHaven` are CC0 assets from [Poly Haven](https://polyhaven.com/); exact source URLs are recorded in that folder's `LICENSE.txt`.
 
 Current gameplay captures: [Outpost](Documentation/Visuals/outpost.png), [Blackwood](Documentation/Visuals/blackwood.png), [Skyline](Documentation/Visuals/skyline.png). These are rendered Play Mode captures, not concept art.
+
+The [field guide and preferences panel](Documentation/Visuals/field-guide.png) explains the full operation loop. See the [manual playtest checklist](Documentation/PLAYTEST.md) for remaining hardware/input checks and current scope limitations.
 
 ## Editor tools
 
