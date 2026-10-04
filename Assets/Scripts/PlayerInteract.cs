@@ -32,8 +32,9 @@ public class PlayerInteract : MonoBehaviour
 
     void Update()
     {
-        if (cam == null)
+        if (cam == null || Time.timeScale == 0f)
         {
+            ClearTarget();
             return;
         }
 
@@ -43,7 +44,7 @@ public class PlayerInteract : MonoBehaviour
 
         if (Physics.Raycast(ray, out hitInfo, distance, mask))
         {
-            Interactable interactable = hitInfo.collider.GetComponent<Interactable>();
+            Interactable interactable = hitInfo.collider.GetComponentInParent<Interactable>();
             if (interactable != null)
             {
                 currentInteractable = interactable;
@@ -56,11 +57,7 @@ public class PlayerInteract : MonoBehaviour
         }
 
         // Nothing interactable in front
-        currentInteractable = null;
-        if (playerUI != null)
-        {
-            playerUI.UpdateText(string.Empty);
-        }
+        ClearTarget();
     }
 
     public void ProcessInteract()
@@ -69,5 +66,11 @@ public class PlayerInteract : MonoBehaviour
         {
             currentInteractable.BaseInteract();
         }
+    }
+
+    private void ClearTarget()
+    {
+        currentInteractable = null;
+        if (playerUI != null) playerUI.UpdateText(string.Empty);
     }
 }

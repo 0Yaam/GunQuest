@@ -37,10 +37,15 @@ public sealed class MissionObjectives : MonoBehaviour
     private readonly Vector3[] relayPositions = new Vector3[RelayCount];
     private readonly Transform[] relayVisuals = new Transform[RelayCount];
     private readonly Renderer[] screens = new Renderer[RelayCount];
+    private readonly LineRenderer[] rings = new LineRenderer[RelayCount];
     private Vector3 extractionPosition;
     private Transform extractionVisual;
     private Material casing, active, complete, dormant;
     private float progressSeconds;
+    private float nextContestCheck;
+    private bool contested;
+    private int visualRelays = -1;
+    private bool visualUnlocked, visualExtracting;
 
     public void Initialize(GameSession owner)
     {
@@ -65,6 +70,7 @@ public sealed class MissionObjectives : MonoBehaviour
             Part(root, PrimitiveType.Cylinder, new Vector3(0.24f, 1.94f, 0), new Vector3(0.035f, 0.54f, 0.035f), casing);
             Part(root, PrimitiveType.Sphere, new Vector3(0.24f, 2.51f, 0), Vector3.one * 0.13f, active);
             Ring(root, 2.5f, active);
+            rings[i] = root.GetComponentInChildren<LineRenderer>();
         }
         extractionPosition = ReachablePosition(owner.player.transform.position);
         extractionVisual = new GameObject("Extraction beacon").transform;
@@ -77,6 +83,7 @@ public sealed class MissionObjectives : MonoBehaviour
             Part(extractionVisual, PrimitiveType.Cylinder, new Vector3(Mathf.Cos(angle) * 3.2f, 0.2f, Mathf.Sin(angle) * 3.2f), new Vector3(0.18f, 0.2f, 0.18f), complete);
         }
         extractionVisual.gameObject.SetActive(false);
+        RefreshVisuals();
     }
 
     public Vector3 RelayPosition(int index) => relayPositions[Mathf.Clamp(index, 0, RelayCount - 1)];
@@ -95,7 +102,7 @@ public sealed class MissionObjectives : MonoBehaviour
 
     public bool TryBeginUpload()
     {
-        if (session == null || session.State != SessionState.Playing || !Unlocked || Uploading || Distance > 3.2f || Contested()) return false;
+        if (session == null || session.State != SessionState.Playing || !Unlocked || Uploading || Distance > 3.2f || Contested(true)) return false;
         Uploading = true;
         progressSeconds = Progress = 0f;
         session.Announce("UPLINK CONNECTED / Hold this position for 5 seconds");
@@ -105,13 +112,10 @@ public sealed class MissionObjectives : MonoBehaviour
     private void Update()
     {
         if (session == null) return;
-        for (int i = 0; i < RelayCount; i++)
-        {
-            screens[i].sharedMaterial = i < RelaysSecured ? complete : i == RelaysSecured && Unlocked ? active : dormant;
-            relayVisuals[i].GetComponentInChildren<LineRenderer>().enabled = i == RelaysSecured && Unlocked;
-        }
-        extractionVisual.gameObject.SetActive(Extracting);
+        RefreshVisuals();
         if (session.State != SessionState.Playing || IsComplete) return;
+        if (Unlocked && (Uploading || Distance <= 4f)) Contested();
+        else contested = false;
         if ((Keyboard.current?.eKey.wasPressedThisFrame ?? false) || (Gamepad.current?.buttonWest.wasPressedThisFrame ?? false)) TryBeginUpload();
         if (Uploading)
         {
@@ -129,6 +133,8 @@ public sealed class MissionObjectives : MonoBehaviour
                 RelaysSecured++;
                 Uploading = false;
                 progressSeconds = Progress = 0;
+                nextContestCheck = 0f;
+                RefreshVisuals();
                 string report = session.relayReports != null && session.relayReports.Length >= RelaysSecured ? session.relayReports[RelaysSecured - 1] : $"RELAY SECURED / {RelaysSecured} of {RelayCount} linked";
                 session.Announce(report);
             }
@@ -141,14 +147,28 @@ public sealed class MissionObjectives : MonoBehaviour
         }
     }
 
-    private bool Contested()
+    private bool Contested(bool force = false)
     {
-        foreach (var hit in Physics.OverlapSphere(TargetPosition, 5f, ~0, QueryTriggerInteraction.Ignore))
+        if (!force && Time.time < nextContestCheck) return contested;
+        nextContestCheck = Time.time + 0.1f;
+        contested = EnemyHealth.AnyLivingWithin(TargetPosition, 5f);
+        return contested;
+    }
+
+    private void RefreshVisuals()
+    {
+        bool unlocked = Unlocked;
+        bool extracting = Extracting;
+        if (visualRelays == RelaysSecured && visualUnlocked == unlocked && visualExtracting == extracting) return;
+        visualRelays = RelaysSecured;
+        visualUnlocked = unlocked;
+        visualExtracting = extracting;
+        for (int i = 0; i < RelayCount; i++)
         {
-            var enemy = hit.GetComponentInParent<EnemyHealth>();
-            if (enemy != null && !enemy.IsDead) return true;
+            screens[i].sharedMaterial = i < RelaysSecured ? complete : i == RelaysSecured && unlocked ? active : dormant;
+            rings[i].enabled = i == RelaysSecured && unlocked;
         }
-        return false;
+        extractionVisual.gameObject.SetActive(extracting);
     }
 
     private static Material Material(string label, Color color, bool emissive)

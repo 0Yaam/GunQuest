@@ -1,8 +1,10 @@
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections.Generic;
 
 public sealed class EnemyHealth : MonoBehaviour
 {
+    private static readonly List<EnemyHealth> ActiveEnemies = new List<EnemyHealth>(64);
     public event System.Action<EnemyHealth> Died;
     [Min(1f)] public float maxHealth = 100f;
     public float CurrentHealth { get; private set; }
@@ -20,6 +22,29 @@ public sealed class EnemyHealth : MonoBehaviour
         roleRenderers = System.Array.FindAll(renderers, visual => visual.name == "Visor" || visual.name == "Reactor" ||
             visual.name == "Shoulder" || visual.name == "Backpack1" || visual.name == "AssaultRifle");
         properties = new MaterialPropertyBlock();
+    }
+
+    private void OnEnable()
+    {
+        if (!ActiveEnemies.Contains(this)) ActiveEnemies.Add(this);
+    }
+
+    private void OnDisable() => ActiveEnemies.Remove(this);
+
+    public static bool AnyLivingWithin(Vector3 position, float radius)
+    {
+        float radiusSquared = radius * radius;
+        for (int i = ActiveEnemies.Count - 1; i >= 0; i--)
+        {
+            var enemy = ActiveEnemies[i];
+            if (enemy == null)
+            {
+                ActiveEnemies.RemoveAt(i);
+                continue;
+            }
+            if (!enemy.IsDead && (enemy.transform.position - position).sqrMagnitude <= radiusSquared) return true;
+        }
+        return false;
     }
 
     private void Update()

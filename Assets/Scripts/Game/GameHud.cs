@@ -9,6 +9,7 @@ public sealed class GameHud : MonoBehaviour
     public GameSession session;
     private Font font;
     private RectTransform canvas;
+    private Canvas uiCanvas;
     private GameObject menu;
     private GameObject hud;
     private GameObject noticeBacking;
@@ -16,8 +17,9 @@ public sealed class GameHud : MonoBehaviour
     private Text objectiveTitle, objectiveHint, waypoint, upgradeStatus, fovLabel;
     private Image objectiveFill;
     private readonly Button[] upgrades = new Button[3];
+    private readonly Text[] upgradeLabels = new Text[3];
     private readonly Button[] qualityButtons = new Button[3];
-    private Text motionLabel, invertLabel, frameLabel;
+    private Text motionLabel, invertLabel, frameLabel, fullscreenLabel;
     private Button readyButton;
     private bool confirmingRestart, confirmingQuit;
     private Button restartButton, quitButton;
@@ -28,6 +30,8 @@ public sealed class GameHud : MonoBehaviour
     private Button[] missionButtons;
     private float hitUntil;
     private float damageAlpha;
+    private float nextHudRefresh;
+    private static readonly string[] UpgradeNames = { "DAMAGE", "RELOAD", "VITALITY" };
     private static readonly Color Teal = new Color(0.28f, 0.94f, 0.79f);
     private static readonly Color Muted = new Color(0.58f, 0.68f, 0.71f);
     private static readonly Color Dark = new Color(0.035f, 0.055f, 0.075f, 0.82f);
@@ -38,7 +42,8 @@ public sealed class GameHud : MonoBehaviour
         font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         var root = new GameObject("GunQuest UI", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         root.transform.SetParent(transform);
-        root.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+        uiCanvas = root.GetComponent<Canvas>();
+        uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         var scaler = root.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1600f, 900f);
@@ -206,7 +211,8 @@ public sealed class GameHud : MonoBehaviour
         {
             int slot = i;
             upgrades[i] = MakeButton(names[i], p, 28 + i * 199, 428, 186, 42, Dark, () => session.PurchaseUpgrade(slot));
-            upgrades[i].GetComponentInChildren<Text>().fontSize = 15;
+            upgradeLabels[i] = upgrades[i].GetComponentInChildren<Text>();
+            upgradeLabels[i].fontSize = 15;
         }
         readyButton = MakeButton("RESUME + CALL NEXT WAVE", p, 28, 482, 584, 38, Dark, () =>
         {
@@ -236,8 +242,9 @@ public sealed class GameHud : MonoBehaviour
         motionLabel = MakeButton("", p, 28, 691, 286, 38, Dark, session.Options.ToggleMotion).GetComponentInChildren<Text>();
         invertLabel = MakeButton("", p, 326, 691, 286, 38, Dark, session.Options.ToggleInvert).GetComponentInChildren<Text>();
         frameLabel = MakeButton("", p, 28, 742, 286, 38, Dark, session.Options.ToggleFrameLimit).GetComponentInChildren<Text>();
-        motionLabel.fontSize = invertLabel.fontSize = frameLabel.fontSize = 15;
-        Label("Preferences save automatically", p, 326, 750, 286, 25, 15, Muted);
+        fullscreenLabel = MakeButton("", p, 326, 742, 286, 38, Dark, session.Options.ToggleFullscreen).GetComponentInChildren<Text>();
+        motionLabel.fontSize = invertLabel.fontSize = frameLabel.fontSize = fullscreenLabel.fontSize = 15;
+        Label("Preferences save automatically", p, 326, 791, 286, 25, 15, Muted);
     }
 
     private void RefreshMenu()
@@ -285,21 +292,26 @@ public sealed class GameHud : MonoBehaviour
     private void Update()
     {
         if (wave == null) return;
-        wave.text = $"WAVE {session.Wave:00} / {session.totalWaves:00}";
-        score.text = $"{session.Score:000000}\n{session.EnemiesRemaining:00} HOSTILES" + (session.ThreatSummary.Length > 0 ? $"\n<size=13>{session.ThreatSummary}</size>" : "");
         float hp = session.player.GetCurrentHealth();
-        health.text = $"{Mathf.CeilToInt(hp):000} / {session.player.maxHealth:0}";
         healthFill.rectTransform.sizeDelta = new Vector2(258f * hp / session.player.maxHealth, 7);
         healthFill.color = hp <= 30 ? new Color(1f, 0.3f, 0.2f) : Accent;
-        ammo.text = session.weapon.IsReloading ? "RELOADING" : $"{session.weapon.Ammo.Loaded:00} <color=#778E95>/ {session.weapon.Ammo.Reserve:000}</color>";
         reloadFill.rectTransform.sizeDelta = new Vector2(300f * session.weapon.ReloadProgress, 4f);
-        notice.text = session.Notice;
-        noticeBacking.SetActive(!string.IsNullOrEmpty(session.Notice));
-        hint.text = session.EnemiesRemaining == 0 && session.Wave < session.totalWaves ? $"NEXT WAVE IN {Mathf.CeilToInt(session.NextWaveIn)}s / resupply and reposition" : session.weapon.Ammo.Loaded == 0 ? (session.weapon.Ammo.Reserve == 0 ? "OUT OF AMMO / find a field cache" : "R / RELOAD") : "";
-        RefreshObjectives();
-        RefreshOptions();
-        if (Time.unscaledTime > hitUntil) hitMarker.text = "";
-        damageAlpha = Mathf.MoveTowards(damageAlpha, 0f, Time.deltaTime * 0.7f);
+        bool refresh = Time.unscaledTime >= nextHudRefresh;
+        if (refresh)
+        {
+            nextHudRefresh = Time.unscaledTime + 0.1f;
+            wave.text = $"WAVE {session.Wave:00} / {session.totalWaves:00}";
+            score.text = $"{session.Score:000000}\n{session.EnemiesRemaining:00} HOSTILES" + (session.ThreatSummary.Length > 0 ? $"\n<size=13>{session.ThreatSummary}</size>" : "");
+            health.text = $"{Mathf.CeilToInt(hp):000} / {session.player.maxHealth:0}";
+            ammo.text = session.weapon.IsReloading ? "RELOADING" : $"{session.weapon.Ammo.Loaded:00} <color=#778E95>/ {session.weapon.Ammo.Reserve:000}</color>";
+            notice.text = session.Notice;
+            noticeBacking.SetActive(!string.IsNullOrEmpty(session.Notice));
+            hint.text = session.EnemiesRemaining == 0 && session.Wave < session.totalWaves ? $"NEXT WAVE IN {Mathf.CeilToInt(session.NextWaveIn)}s / resupply and reposition" : session.weapon.Ammo.Loaded == 0 ? (session.weapon.Ammo.Reserve == 0 ? "OUT OF AMMO / find a field cache" : "R / RELOAD") : "";
+            RefreshOptions();
+        }
+        RefreshObjectives(refresh);
+        if (Time.unscaledTime > hitUntil && hitMarker.text.Length > 0) hitMarker.text = "";
+        damageAlpha = Mathf.MoveTowards(damageAlpha, 0f, Time.unscaledDeltaTime * 0.7f);
         damageOverlay.color = new Color(0.65f, 0.05f, 0.02f, damageAlpha);
     }
 
@@ -307,11 +319,10 @@ public sealed class GameHud : MonoBehaviour
     {
         upgradeStrip.SetActive(session.CanUpgrade && session.State == SessionState.Playing);
         upgradeStatus.text = $"FIELD REQUISITIONS / {session.UpgradeCredits} CREDIT(S) AVAILABLE";
-        string[] names = { "DAMAGE", "RELOAD", "VITALITY" };
         for (int i = 0; i < 3; i++)
         {
             upgrades[i].interactable = session.CanUpgrade && session.UpgradeCredits > 0 && session.UpgradeLevel(i) < 3;
-            upgrades[i].GetComponentInChildren<Text>().text = $"{names[i]} {session.UpgradeLevel(i)}/3";
+            upgradeLabels[i].text = $"{UpgradeNames[i]} {session.UpgradeLevel(i)}/3";
         }
         readyButton.interactable = session.CanUpgrade;
         for (int i = 0; i < 3; i++) StyleDifficulty(qualityButtons[i], session.Options.GraphicsPreset == i);
@@ -319,19 +330,22 @@ public sealed class GameHud : MonoBehaviour
         motionLabel.text = "REDUCED MOTION / " + (session.Options.ReducedMotion ? "ON" : "OFF");
         invertLabel.text = "INVERT Y / " + (session.Options.InvertY ? "ON" : "OFF");
         frameLabel.text = "FRAME LIMIT / " + (session.Options.FrameLimit ? "60 FPS" : "UNLIMITED");
+        fullscreenLabel.text = "DISPLAY / " + (session.Options.Fullscreen ? "FULLSCREEN" : "WINDOWED");
     }
 
-    private void RefreshObjectives()
+    private void RefreshObjectives(bool refreshText)
     {
         var objectives = session.Objectives;
         if (objectives == null) return;
-        objectiveTitle.text = objectives.TargetName + $"   {objectives.Distance:0}m";
-        objectiveHint.text = objectives.Instruction;
+        if (refreshText)
+        {
+            objectiveTitle.text = objectives.TargetName + $"   {objectives.Distance:0}m";
+            objectiveHint.text = objectives.Instruction;
+        }
         objectiveFill.rectTransform.sizeDelta = new Vector2(310f * objectives.Progress, 4);
         Vector3 target = objectives.TargetPosition + Vector3.up * 2.9f;
         var camera = session.weapon.aimCamera;
         Vector3 screen = camera.WorldToScreenPoint(target);
-        var uiCanvas = canvas.GetComponentInParent<Canvas>();
         Camera uiCamera = uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : camera;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, screen, uiCamera, out var point);
         float x = point.x + 800, y = 450 - point.y;
@@ -344,7 +358,7 @@ public sealed class GameHud : MonoBehaviour
         x = Mathf.Clamp(x, 440, 1160);
         y = Mathf.Clamp(y, 275, 640);
         waypoint.rectTransform.anchoredPosition = new Vector2(x - 110, -y);
-        waypoint.text = (outside ? (x < 800 ? "< " : "> ") : "◇ ") + objectives.TargetName + $"\n{objectives.Distance:0}m";
+        if (refreshText) waypoint.text = (outside ? (x < 800 ? "< " : "> ") : "◇ ") + objectives.TargetName + $"\n{objectives.Distance:0}m";
     }
 
     private void OnHit(bool kill)

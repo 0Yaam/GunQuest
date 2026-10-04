@@ -3,6 +3,9 @@ using UnityEngine;
 public class StateMachine : MonoBehaviour
 {
     public BaseState activeState;
+    private Enemy enemy;
+
+    private void Awake() => enemy = GetComponent<Enemy>();
 
     public void Initialise()
     {
@@ -29,8 +32,9 @@ public class StateMachine : MonoBehaviour
         if (activeState != null)
         {
             activeState.stateMachine = this;
-            activeState.enemy = GetComponent<Enemy>();
+            activeState.enemy = enemy;
             activeState.Enter();
+            enemy?.SetCurrentState(activeState.GetType().Name);
         }
     }
 }

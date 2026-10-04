@@ -21,6 +21,7 @@ public sealed class PlayerWeapon : MonoBehaviour
     private float nextShot;
     private float reloadEnd;
     private PlayerHealth health;
+    private readonly RaycastHit[] hitBuffer = new RaycastHit[16];
 
     private void Awake()
     {
@@ -61,16 +62,22 @@ public sealed class PlayerWeapon : MonoBehaviour
         nextShot = Time.time + shotInterval;
         var ray = aimCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f));
         Vector3 end = ray.GetPoint(150f);
-        var hits = Physics.RaycastAll(ray, 150f, hitMask, QueryTriggerInteraction.Ignore);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-        foreach (var hit in hits)
+        int count = Physics.RaycastNonAlloc(ray, hitBuffer, 150f, hitMask, QueryTriggerInteraction.Ignore);
+        int nearest = -1;
+        float nearestDistance = float.MaxValue;
+        for (int i = 0; i < count; i++)
         {
-            if (hit.transform.IsChildOf(transform)) continue;
+            if (hitBuffer[i].transform.IsChildOf(transform) || hitBuffer[i].distance >= nearestDistance) continue;
+            nearest = i;
+            nearestDistance = hitBuffer[i].distance;
+        }
+        if (nearest >= 0)
+        {
+            var hit = hitBuffer[nearest];
             end = hit.point;
             var target = hit.collider.GetComponentInParent<EnemyHealth>();
             if (target != null && !target.IsDead) Hit?.Invoke(target.TakeDamage(damage));
             CombatFeedback.Impact(hit.point, hit.normal, target != null);
-            break;
         }
         CombatFeedback.Tracer(muzzle != null ? muzzle.position : ray.origin + ray.direction * 0.5f, end, new Color(0.3f, 1f, 0.85f));
         Fired?.Invoke();

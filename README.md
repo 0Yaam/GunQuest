@@ -21,6 +21,7 @@ Open the project with Unity `6000.4.8f1`, load `Assets/Scenes/Blackwood.unity`, 
 | Left Control / east button | Crouch |
 | Space / south button | Jump |
 | Escape / Start | Pause |
+| F11 / Alt+Enter | Toggle fullscreen |
 | E / west button (X on Xbox) | Start a relay upload |
 | 1 / 2 / 3 | Buy damage / reload / vitality upgrades between waves |
 | Enter | Call the next wave early |
@@ -37,7 +38,7 @@ Between waves, there is a 20-second resupply window. Each of the first four clea
 
 ## Preferences and accessibility
 
-Menus include a field guide, persistent sensitivity and audio sliders, a 65–100 degree field-of-view slider, inverted vertical look, reduced weapon motion and a 60 FPS/unlimited frame cap. Performance, Balanced and Ultra presets adjust internal resolution, MSAA and shadow distance without changing project assets. The safe-area layout keeps controls visible at narrower aspect ratios. Restarting or exiting an active paused run requires a second confirmation click; there is no mid-run checkpoint save.
+Menus include a field guide, persistent sensitivity and audio sliders, a 65–100 degree field-of-view slider, inverted vertical look, reduced weapon motion, fullscreen/windowed switching and a 60 FPS/unlimited frame cap. Performance, Balanced and Ultra presets adjust internal resolution, upscaling, anti-aliasing, LOD and shadow cost without changing project assets. Balanced is the optimized default and automatically compensates its internal render scale on high-resolution fullscreen displays. Ultra stays native through 1440p and uses a 1440p pixel budget with FSR on denser high-DPI panels, preserving its high LOD, SMAA and shadow settings without an avoidable fill-rate spike. The options notebook also reports live FPS. The safe-area layout keeps controls visible at narrower aspect ratios. Restarting or exiting an active paused run requires a second confirmation click; there is no mid-run checkpoint save.
 
 Choose a threat level before deployment. Recruit fields fewer, softer enemies and provides generous resupply. Operator is the balanced default. Veteran increases enemy count, speed, durability and score rewards while reducing between-wave supplies.
 
@@ -47,15 +48,15 @@ Each victory records a per-map, per-difficulty best score and awards a performan
 
 Outpost wind, Blackwood's low forest drone and Skyline's electronic pulse are generated at runtime, so each operation has its own lightweight soundscape. Victory and defeat have dedicated stingers, and both audio level and look sensitivity are adjustable from every menu.
 
-First-person feedback includes distance-driven footsteps, quieter crouched steps, landings, magazine/bolt reload cues, a rate-limited empty-chamber click, armor impacts, radio notifications and a restrained critical-health warning. Operator cues pause with gameplay and are released when the run ends.
+First-person feedback includes distance-driven footsteps, quieter crouched steps, landings, layered rifle audio, magazine/bolt reload cues, a rate-limited empty-chamber click, animated recoil, muzzle flash and smoke, moving tracers, pooled impact sparks/scorch marks, armor impacts, radio notifications and a restrained critical-health warning. Operator cues pause with gameplay and are released when the run ends. World-space combat effects are cleared on every scene load so marks from one operation cannot leak into the next.
 
 ## Visual direction
 
-Blackwood is a purpose-built forest level, not an industrial arena with trees added. Its native Unity terrain has saved dirt-trail, leaf-litter and granite-bank layers. Photogrammetric firs have three geometry LODs; scanned ferns, saplings, mossy rocks and deadwood form the understory. An authored trail connects the checkpoint, creek crossing, timber ranger station and communications mast. The western ford and footpath provide an alternate route. Water has animated surface normals and depth-softened banks; the palette uses cool air, muted greens and warm practical lamps. See [Blackwood's design and story](Documentation/BLACKWOOD-DESIGN.md).
+Blackwood is a purpose-built forest level, not an industrial arena with trees added. Its native Unity terrain has saved dirt-trail, leaf-litter and granite-bank layers. Photogrammetric firs have three geometry LODs; scanned ferns, saplings, mossy rocks and deadwood form the understory. An authored trail connects the checkpoint, creek crossing, timber ranger station and communications mast. The western ford and footpath provide an alternate route. The foliage shader adds stand-level colour variation, restrained wind and leaf transmission; creek water adds animated normals, depth colour, bank foam and sun sparkle. The palette uses cool air, muted greens and warm practical lamps. See [Blackwood's design and story](Documentation/BLACKWOOD-DESIGN.md).
 
 Outpost and Skyline retain their distinct industrial architecture: beveled meshes, recessed windows, layered ventilation panels, pipes, tank reinforcement bands, accessible stairs and raised service decks. Their layouts are not replaced by the forest builder.
 
-The PC presentation uses 115% render scale, 4x MSAA plus high-quality SMAA, 4K cascaded shadows, ACES tonemapping, restrained bloom, per-operation exposure, local reflection probes and broad sky fill. The GQ-30 mesh is centered and angled to show the receiver, with support/trigger gloves and sleeves. The deployment menu hides the first-person weapon and preserves text contrast over the live environment.
+The optimized PC baseline uses an 85% internal render scale with FSR upscaling, FXAA, 2K two-cascade shadows, texture streaming, GPU-instanced environment materials and map-specific ACES grading. Ultra restores native internal resolution through 1440p, then caps its fullscreen pixel budget near 1440p with FSR while retaining SMAA and 4K four-cascade shadows; Performance lowers resolution, LOD and reflection cost further. The GQ-30 uses a dedicated metallic/normal/emissive viewmodel shader, compact rail optic, support/trigger gloves and sleeves. The deployment menu hides the first-person weapon and preserves text contrast over the live environment.
 
 The imported ground materials, HDR environments and forest scans are CC0 assets from [Poly Haven](https://polyhaven.com/). Exact source URLs and derivative notes are recorded under `Assets/ThirdParty/PolyHaven` and `Assets/ThirdParty/ForestScans`. `Tools/FetchForestAssets.ps1` downloads and verifies the forest sources. `Tools/PrepareFir.py` prepares game geometry LODs in Blender; the high-density original stays outside Git under ignored `Logs/ForestSource`.
 
@@ -71,8 +72,11 @@ The `GunQuest` menu contains the supported project workflows:
 - `World / Build Blackwood - First Signal` rebuilds only the forest geometry/navigation, updates the three chapters' narrative/UI and makes Blackwood the first build scene. Save custom scene work separately before regenerating.
 - `Outpost / Build Windows player` creates `Builds/Windows/GunQuest.exe`.
 - `Validation / Validate combat rules` verifies ammo conservation and health/death rules.
-- `Validation / Run outpost play checks` exercises navigation, combat, cover, pause, all five waves, upgrade credit/cap rules, interrupted relay uploads, extraction reset, victory, restart and defeat in Play Mode.
+- `Validation / Run outpost play checks` exercises navigation, combat feedback cleanup, cover, pause, all five waves, upgrade credit/cap rules, dense-scene relay contention, interrupted uploads, extraction reset, victory, restart and defeat in Play Mode.
 - `Validation / Run campaign scene checks` verifies every scene, complete navigation routes from all hostile entries and to every relay, wave spawning, animated enemy scale and alignment. It captures menus, gameplay and separate posed character checks in `Logs/Screenshots`.
+- `Performance / Apply optimized project defaults` reapplies 2K streaming imports, compressed static forest meshes, environment instancing, scene batching, cheaper decorative shadows and fullscreen build defaults.
+- `Performance / Optimize campaign scene batching` reapplies static batching and shadow rules without reimporting source art.
+- `Performance / Audit campaign scenes` reports base/LOD0 geometry, material slots, shadow casters, high-poly meshes, lights and reflection probes for every map.
 
 Equivalent headless commands from PowerShell:
 
@@ -81,7 +85,9 @@ Equivalent headless commands from PowerShell:
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod PlayValidation.Run -logFile Logs/play-validation.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod CampaignValidation.Run -logFile Logs/campaign-validation.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -projectPath . -executeMethod ForestValidation.Run -logFile Logs/forest-views.log
+& 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -nographics -quit -projectPath . -executeMethod ForestAssetTools.AuditScenes -logFile Logs/performance-audit.log
 & 'D:/OS/Downloads/unity/6000.4.8f1/Editor/Unity.exe' -batchmode -nographics -quit -projectPath . -executeMethod OutpostBuilder.BuildWindows -logFile Logs/windows-build.log
+& 'Builds/Windows/GunQuest.exe' -batchmode -screen-fullscreen 0 -screen-width 1600 -screen-height 900 -gunquest-campaign-performance-check -logFile Logs/campaign-performance-player-final.log
 ```
 
 The project includes third-party sample art under `Assets/DL`; those assets retain their original authorship and licenses.

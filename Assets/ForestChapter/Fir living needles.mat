@@ -37,9 +37,14 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Cutoff: 0.4
-    - _Wind: 0.025
+    - _Cutoff: 0.36
+    - _Smoothness: 0.16
+    - _SubsurfaceStrength: 0.3
+    - _Wind: 0.022
+    - _WindSpeed: 1.1
     m_Colors:
     - _BaseColor: {r: 0.89, g: 0.95, b: 0.83, a: 1}
+    - _HueVariation: {r: 0.55, g: 0.76, b: 0.36, a: 0.28}
+    - _SubsurfaceColor: {r: 0.64, g: 0.88, b: 0.36, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

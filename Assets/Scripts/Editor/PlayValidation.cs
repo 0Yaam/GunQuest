@@ -156,6 +156,9 @@ public static class PlayValidation
                     Physics.SyncTransforms();
                     Check(session.weapon.TryFire(), "Second shot must fire after cooldown.");
                     Check(target.CurrentHealth == 66f, "Thin wall must block rifle damage.");
+                    Check(HasActiveCombatFeedback(), "A world impact must activate pooled combat feedback.");
+                    CombatFeedback.Clear();
+                    Check(!HasActiveCombatFeedback(), "Clearing combat feedback must remove tracers, sparks and decals before a scene transition.");
                     UnityEngine.Object.Destroy(wall);
                     UnityEngine.Object.Destroy(target.gameObject);
                     session.weapon.BeginReload();
@@ -284,13 +287,23 @@ public static class PlayValidation
             Physics.SyncTransforms();
             if (!testedContested)
             {
+                var clutter = new GameObject("Validation dense objective clutter");
+                for (int i = 0; i < 48; i++)
+                {
+                    var detail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    detail.transform.SetParent(clutter.transform);
+                    detail.transform.position = objective.TargetPosition + new Vector3((i % 8 - 3.5f) * 0.45f, 0.2f, (i / 8 - 2.5f) * 0.45f);
+                    detail.transform.localScale = Vector3.one * 0.12f;
+                }
                 var blocker = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 blocker.name = "Validation contested relay";
                 blocker.transform.position = objective.TargetPosition + Vector3.right * 2f + Vector3.up;
                 blocker.AddComponent<EnemyHealth>();
                 Physics.SyncTransforms();
-                Check(!objective.TryBeginUpload(), "A living hostile inside the ring must block upload.");
+                Check(!objective.TryBeginUpload(), "Dense scenery must not hide a living hostile inside the relay ring.");
+                blocker.GetComponent<EnemyHealth>().enabled = false;
                 blocker.GetComponent<Collider>().enabled = false;
+                UnityEngine.Object.Destroy(clutter);
                 UnityEngine.Object.Destroy(blocker);
                 testedContested = true;
             }
@@ -327,7 +340,7 @@ public static class PlayValidation
         var options = session.Options;
         float originalFov = options.FieldOfView;
         int originalGraphics = options.GraphicsPreset;
-        bool originalInvert = options.InvertY, originalMotion = options.ReducedMotion, originalLimit = options.FrameLimit;
+        bool originalInvert = options.InvertY, originalMotion = options.ReducedMotion, originalLimit = options.FrameLimit, originalFullscreen = options.Fullscreen;
         try
         {
             options.SetFieldOfView(500);
@@ -336,14 +349,16 @@ public static class PlayValidation
             Check(options.FieldOfView == 65, "FOV must clamp at the supported minimum.");
             options.SetFieldOfView(float.NaN);
             Check(options.FieldOfView == 65, "Invalid preference values must not poison the camera FOV.");
-            options.ToggleInvert(); options.ToggleMotion(); options.ToggleFrameLimit();
-            Check(options.InvertY != originalInvert && options.ReducedMotion != originalMotion && options.FrameLimit != originalLimit, "Accessibility controls must toggle independently.");
+            options.ToggleInvert(); options.ToggleMotion(); options.ToggleFrameLimit(); options.ToggleFullscreen();
+            Check(options.InvertY != originalInvert && options.ReducedMotion != originalMotion && options.FrameLimit != originalLimit && options.Fullscreen != originalFullscreen, "Accessibility and display controls must toggle independently.");
             for (int preset = 0; preset < 3; preset++)
             {
                 options.SetGraphics(preset);
                 var pipeline = QualitySettings.renderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
                 Check(pipeline != null && !AssetDatabase.Contains(pipeline), "Quality changes must target a runtime copy, not a project asset.");
-                Check(Mathf.Approximately(pipeline.renderScale, preset == 0 ? 0.75f : preset == 1 ? 1f : 1.15f), "Graphics preset must apply its render scale.");
+                Check(Mathf.Approximately(pipeline.renderScale, preset == 0 ? 0.65f : preset == 1 ? 0.85f : 1f), "Graphics preset must apply its render scale.");
+                Check(pipeline.shadowDistance == (preset == 0 ? 28f : preset == 1 ? 45f : 75f), "Graphics preset must apply its shadow distance.");
+                Check(pipeline.msaaSampleCount == 1, "Post-process antialiasing must not be stacked with MSAA.");
             }
         }
         finally
@@ -353,6 +368,7 @@ public static class PlayValidation
             if (options.InvertY != originalInvert) options.ToggleInvert();
             if (options.ReducedMotion != originalMotion) options.ToggleMotion();
             if (options.FrameLimit != originalLimit) options.ToggleFrameLimit();
+            if (options.Fullscreen != originalFullscreen) options.ToggleFullscreen();
             options.Save();
         }
     }
@@ -382,6 +398,17 @@ public static class PlayValidation
         if (session.Wave >= 2) Check(runner, "Wave two and later must field runners.");
         if (session.Wave >= 3) Check(juggernaut, "Wave three and later must field a juggernaut.");
         if (session.Wave >= 4) Check(marksman, "Wave four and later must field a marksman.");
+    }
+
+    private static bool HasActiveCombatFeedback()
+    {
+        var feedback = UnityEngine.Object.FindAnyObjectByType<CombatFeedbackDriver>();
+        if (feedback == null) return false;
+        foreach (var line in feedback.GetComponentsInChildren<LineRenderer>(true)) if (line.enabled) return true;
+        foreach (var particles in feedback.GetComponentsInChildren<ParticleSystem>(true)) if (particles.particleCount > 0) return true;
+        foreach (var renderer in feedback.GetComponentsInChildren<Renderer>(true))
+            if (renderer.enabled && renderer.gameObject.name.StartsWith("Pooled impact mark")) return true;
+        return false;
     }
 
     private static void Capture(string name)

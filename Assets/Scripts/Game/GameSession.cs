@@ -191,7 +191,8 @@ public sealed class GameSession : MonoBehaviour
             if (Keyboard.current.digit1Key.wasPressedThisFrame) PurchaseUpgrade(0);
             if (Keyboard.current.digit2Key.wasPressedThisFrame) PurchaseUpgrade(1);
             if (Keyboard.current.digit3Key.wasPressedThisFrame) PurchaseUpgrade(2);
-            if (Keyboard.current.enterKey.wasPressedThisFrame) CallNextWave();
+            bool altDown = Keyboard.current.leftAltKey.isPressed || Keyboard.current.rightAltKey.isPressed;
+            if (Keyboard.current.enterKey.wasPressedThisFrame && !altDown) CallNextWave();
         }
         Elapsed += Time.deltaTime;
         if (Time.time > noticeUntil) Notice = "";

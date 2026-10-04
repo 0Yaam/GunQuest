@@ -11,6 +11,7 @@ public static class EnvironmentRebuild
 {
     private const string Art = "Assets/Rebuilt";
     private const string Textures = "Assets/ThirdParty/PolyHaven/";
+    private const string WeaponSourceMaterial = "Assets/DL/SciFiWarriorPBRHPPolyart/Materials/PBR.mat";
     private static readonly Dictionary<string, Mesh> Meshes = new Dictionary<string, Mesh>();
     private static Transform architecture;
     private static Material concrete, steel, pale, rust, rubber, amber, cyan, glass, earth, road;
@@ -45,6 +46,7 @@ public static class EnvironmentRebuild
             else if (map == 1) Blackwood();
             else Skyline();
             Perimeter();
+            OutpostBuilder.OptimizeEnvironment(architecture);
             OutpostBuilder.BakeNavigation(architecture, Art + "/Navigation" + map + ".asset");
             string[] descriptions = {
                 "A refinery at the edge of the desert.\nDefend the uplink through five hostile waves.",
@@ -391,9 +393,32 @@ public static class EnvironmentRebuild
         foreach (var old in profile.components.ToArray()) if (old != null) Object.DestroyImmediate(old, true);
         profile.components.Clear();
         Override<Tonemapping>(profile).mode.Override(TonemappingMode.ACES);
-        var colors = Override<ColorAdjustments>(profile); colors.contrast.Override(8); colors.saturation.Override(-8); colors.postExposure.Override(night ? 0.6f : 0.2f);
-        var bloom = Override<Bloom>(profile); bloom.intensity.Override(0.2f); bloom.threshold.Override(1.3f);
-        Override<Vignette>(profile).intensity.Override(0.16f); volume.sharedProfile = profile; EditorUtility.SetDirty(profile);
+        var colors = Override<ColorAdjustments>(profile);
+        colors.contrast.Override(night ? 18f : map == 1 ? 12f : 15f);
+        colors.saturation.Override(night ? 3f : map == 1 ? -5f : -2f);
+        colors.postExposure.Override(night ? 0.42f : map == 1 ? 0.08f : 0.12f);
+        colors.colorFilter.Override(night ? new Color(0.91f, 0.96f, 1f) : map == 1 ? new Color(0.96f, 1f, 0.94f) : new Color(1f, 0.97f, 0.91f));
+        var balance = Override<WhiteBalance>(profile);
+        balance.temperature.Override(night ? -9f : map == 1 ? -2f : 5f);
+        balance.tint.Override(night ? 4f : map == 1 ? -3f : 1f);
+        var lift = Override<LiftGammaGain>(profile);
+        lift.lift.Override(night ? new Vector4(0.96f, 0.985f, 1.035f, 0f) : new Vector4(0.985f, 0.995f, 1.01f, 0f));
+        lift.gamma.Override(night ? new Vector4(0.985f, 1f, 1.025f, 0f) : new Vector4(1.015f, 1f, 0.985f, 0f));
+        lift.gain.Override(night ? new Vector4(1.05f, 1.015f, 0.98f, 0f) : new Vector4(1.035f, 1.01f, 0.975f, 0f));
+        var bloom = Override<Bloom>(profile);
+        bloom.intensity.Override(night ? 0.42f : map == 1 ? 0.19f : 0.28f);
+        bloom.threshold.Override(night ? 0.92f : 1.08f);
+        bloom.scatter.Override(night ? 0.66f : 0.58f);
+        bloom.highQualityFiltering.Override(false);
+        var vignette = Override<Vignette>(profile);
+        vignette.intensity.Override(night ? 0.2f : 0.15f);
+        vignette.smoothness.Override(0.42f);
+        var grain = Override<FilmGrain>(profile);
+        grain.intensity.Override(night ? 0.075f : 0.045f);
+        grain.response.Override(0.8f);
+        Override<ChromaticAberration>(profile).intensity.Override(night ? 0.018f : 0.009f);
+        Override<LensDistortion>(profile).intensity.Override(-0.018f);
+        volume.sharedProfile = profile; EditorUtility.SetDirty(profile);
         var probe = new GameObject("Local environment reflections").AddComponent<ReflectionProbe>();
         probe.transform.position = new Vector3(0, 4, 0); probe.size = new Vector3(65, 25, 65);
         probe.mode = ReflectionProbeMode.Realtime; probe.refreshMode = ReflectionProbeRefreshMode.OnAwake;
@@ -413,13 +438,17 @@ public static class EnvironmentRebuild
     {
         if (rubber == null) rubber = AssetDatabase.LoadAssetAtPath<Material>(Art + "/Dark seals.mat");
         if (steel == null) steel = AssetDatabase.LoadAssetAtPath<Material>(Art + "/Brushed gunmetal.mat");
+        if (cyan == null) cyan = AssetDatabase.LoadAssetAtPath<Material>(Art + "/Cool fixtures.mat");
+        if (glass == null) glass = AssetDatabase.LoadAssetAtPath<Material>(Art + "/Smoked glazing.mat");
         var weapon = Object.FindAnyObjectByType<PlayerWeapon>();
         var presentation = weapon.GetComponent<WeaponPresentation>();
         var gun = presentation.viewModel;
         gun.localPosition = new Vector3(0.24f, -0.22f, 0.45f);
         gun.localScale = Vector3.one * 0.8f;
-        // Remove oversized accessory blocks; the source rifle already has modeled sights.
-        foreach (string name in new[] { "Holographic sight", "Sight shroud left", "Sight shroud right" })
+        // Re-running the visual pass must replace, rather than duplicate, generated viewmodel pieces.
+        foreach (string name in new[] { "Holographic sight", "Sight shroud left", "Sight shroud right",
+            "Support sleeve", "Support wrist armor", "Support glove", "Trigger sleeve", "Trigger glove",
+            "Top rail", "Optic base", "Optic hood left", "Optic hood right", "Optic lens", "Reticle emitter", "Barrel shroud", "Muzzle brake", "Receiver status" })
         { var child = gun.Find(name); if (child != null) Object.DestroyImmediate(child.gameObject); }
         var rifle = gun.Find("PBR rifle geometry");
         if (rifle != null)
@@ -442,13 +471,60 @@ public static class EnvironmentRebuild
             rifle.localScale = Vector3.one;
             rifle.localRotation = Quaternion.Euler(0, -7, -12);
             rifle.localPosition = new Vector3(0, -0.015f, 0.06f);
+            var renderer = rifle.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = PrepareWeaponFinish();
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
         }
+        ViewModelPart(gun, "Top rail", new Vector3(0f, 0.058f, 0.15f), new Vector3(0.052f, 0.014f, 0.25f), rubber, 0.005f);
+        ViewModelPart(gun, "Optic base", new Vector3(0f, 0.078f, 0.095f), new Vector3(0.073f, 0.022f, 0.085f), steel, 0.007f);
+        ViewModelPart(gun, "Optic hood left", new Vector3(-0.040f, 0.113f, 0.095f), new Vector3(0.011f, 0.058f, 0.075f), rubber, 0.004f);
+        ViewModelPart(gun, "Optic hood right", new Vector3(0.040f, 0.113f, 0.095f), new Vector3(0.011f, 0.058f, 0.075f), rubber, 0.004f);
+        ViewModelPart(gun, "Optic lens", new Vector3(0f, 0.113f, 0.061f), new Vector3(0.056f, 0.032f, 0.005f), glass, 0.002f);
+        ViewModelPart(gun, "Reticle emitter", new Vector3(0f, 0.113f, 0.057f), new Vector3(0.006f, 0.006f, 0.003f), cyan, 0.001f);
         ArmSegment(gun, "Support sleeve", new Vector3(-0.30f, -0.32f, -0.1f), new Vector3(-0.06f, -0.1f, 0.20f), 0.095f, rubber);
         ArmSegment(gun, "Support wrist armor", new Vector3(-0.10f, -0.14f, 0.14f), new Vector3(-0.065f, -0.095f, 0.20f), 0.104f, steel);
         ArmSegment(gun, "Support glove", new Vector3(-0.055f, -0.08f, 0.21f), new Vector3(0.025f, -0.08f, 0.22f), 0.066f, rubber);
         ArmSegment(gun, "Trigger sleeve", new Vector3(0.23f, -0.31f, -0.30f), new Vector3(0.04f, -0.16f, -0.08f), 0.09f, rubber);
         ArmSegment(gun, "Trigger glove", new Vector3(0.04f, -0.16f, -0.08f), new Vector3(0.04f, -0.065f, -0.04f), 0.065f, rubber);
-        weapon.aimCamera.farClipPlane = 450;
+        weapon.muzzle.localPosition = new Vector3(0f, 0.015f, 0.635f);
+        foreach (var renderer in gun.GetComponentsInChildren<MeshRenderer>())
+        {
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+        }
+        weapon.aimCamera.farClipPlane = 180f;
+    }
+
+    private static Material PrepareWeaponFinish()
+    {
+        const string path = Art + "/GQ30 field finish.mat";
+        var source = AssetDatabase.LoadAssetAtPath<Material>(WeaponSourceMaterial);
+        var shader = Shader.Find("GunQuest/Viewmodel Weapon");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+        var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null) { material = new Material(shader); AssetDatabase.CreateAsset(material, path); }
+        material.shader = shader;
+        foreach (string property in new[] { "_BaseMap", "_BumpMap", "_MetallicGlossMap", "_OcclusionMap", "_EmissionMap" })
+            if (source != null && source.HasProperty(property) && material.HasProperty(property)) material.SetTexture(property, source.GetTexture(property));
+        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", new Color(0.84f, 0.88f, 0.82f));
+        if (material.HasProperty("_AccentColor")) material.SetColor("_AccentColor", new Color(0.12f, 1.1f, 0.82f));
+        if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", 0.68f);
+        if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0.46f);
+        if (material.HasProperty("_BumpScale")) material.SetFloat("_BumpScale", 1.15f);
+        if (material.HasProperty("_OcclusionStrength")) material.SetFloat("_OcclusionStrength", 1f);
+        if (material.HasProperty("_AccentStrength")) material.SetFloat("_AccentStrength", 1.35f);
+        material.enableInstancing = true;
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static void ViewModelPart(Transform parent, string name, Vector3 position, Vector3 size, Material material, float bevel)
+    {
+        var mesh = RoundedBox(size, bevel);
+        var go = MeshObject(name, StoreMesh(mesh, "Viewmodel" + name.Replace(" ", "")), parent, material);
+        go.transform.localPosition = position;
     }
 
     private static void ArmSegment(Transform parent, string name, Vector3 start, Vector3 end, float width, Material material)

@@ -10,6 +10,7 @@ public class Bullet : MonoBehaviour
     private float lifeTime = 5f;
     private Transform owner;
     private bool consumed;
+    private static readonly RaycastHit[] Hits = new RaycastHit[16];
 
     public void SetOwner(Transform value) => owner = value;
     public void Configure(float newDamage, float newSpeed)
@@ -27,12 +28,16 @@ public class Bullet : MonoBehaviour
     {
         float distance = speed * Time.deltaTime;
         if (distance <= 0f || consumed) return;
-        var hits = Physics.RaycastAll(transform.position, transform.forward, distance, ~0, QueryTriggerInteraction.Ignore);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-        foreach (var hit in hits)
+        int count = Physics.RaycastNonAlloc(transform.position, transform.forward, Hits, distance, ~0, QueryTriggerInteraction.Ignore);
+        int nearest = -1;
+        float nearestDistance = float.MaxValue;
+        for (int i = 0; i < count; i++)
         {
-            if (Consume(hit.collider)) return;
+            if (ShouldIgnore(Hits[i].collider) || Hits[i].distance >= nearestDistance) continue;
+            nearest = i;
+            nearestDistance = Hits[i].distance;
         }
+        if (nearest >= 0 && Consume(Hits[nearest].collider)) return;
         transform.position += transform.forward * distance;
     }
 
@@ -43,12 +48,14 @@ public class Bullet : MonoBehaviour
 
     private bool Consume(Collider other)
     {
-        if (consumed || other.isTrigger || other.transform.IsChildOf(transform) ||
-            (owner != null && other.transform.IsChildOf(owner)) || other.GetComponentInParent<Bullet>() != null) return false;
+        if (consumed || ShouldIgnore(other)) return false;
         consumed = true;
         var health = other.GetComponentInParent<PlayerHealth>();
         if (health != null) health.TakeDamage(damage);
         Destroy(gameObject);
         return true;
     }
+
+    private bool ShouldIgnore(Collider other) => other == null || other.isTrigger || other.transform.IsChildOf(transform) ||
+        (owner != null && other.transform.IsChildOf(owner)) || other.GetComponentInParent<Bullet>() != null;
 }

@@ -14,7 +14,8 @@ public sealed class MissionSoundscape : MonoBehaviour
     private void Awake()
     {
         session = GetComponent<GameSession>();
-        AudioListener.volume = PlayerPrefs.GetFloat("GunQuest.Audio", 0.75f);
+        float storedAudio = PlayerPrefs.GetFloat("GunQuest.Audio", 0.75f);
+        AudioListener.volume = float.IsFinite(storedAudio) ? Mathf.Clamp01(storedAudio) : 0.75f;
         ambience = gameObject.AddComponent<AudioSource>();
         ambience.loop = true;
         ambience.playOnAwake = false;

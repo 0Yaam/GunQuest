@@ -12,8 +12,8 @@ public static class ForestChapterBuilder
     private const string Art = "Assets/ForestChapter";
     private const string Scans = "Assets/ThirdParty/ForestScans/";
     private static Transform world, flora;
-    private static Material wood, metal, roof, glass, lamp, rock, deadwood, fern, saplingBark, saplingLeaf;
-    private static MeshFilter[] rocks, ferns, logs, saplings;
+    private static Material wood, metal, roof, glass, lamp, rock, deadwood, fern;
+    private static MeshFilter[] rocks, ferns, logs;
     private static readonly MeshFilter[,] firLods = new MeshFilter[2,3];
     private static readonly Dictionary<string,Material> firMaterials = new();
     private static readonly Vector2[] Trail = { new(-9,-51), new(-11,-35), new(-9,-25), new(5,-15), new(8,1), new(2,12), new(-12,24), new(-7,34), new(6,43) };
@@ -38,6 +38,7 @@ public static class ForestChapterBuilder
         Atmosphere();
         Landmarks();
         Ecology();
+        OutpostBuilder.OptimizeEnvironment(world);
         OutpostBuilder.BakeNavigation(world, Art + "/BlackwoodNavigation.asset");
         Vector3 start = Ground(-9,-49) + Vector3.up * 0.2f;
         OutpostBuilder.CreateMissionActors("01", "BLACKWOOD",
@@ -63,17 +64,6 @@ public static class ForestChapterBuilder
         };
         session.player.transform.rotation = Quaternion.Euler(0,-2,0);
         EnvironmentRebuild.RefineViewModel();
-        var gun = session.weapon.GetComponent<WeaponPresentation>().viewModel;
-        foreach (var renderer in gun.GetComponentsInChildren<Renderer>())
-        {
-            if (renderer.name != "PBR rifle geometry") continue;
-            string path = Art + "/Field rifle.mat";
-            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (material == null) { material = new Material(renderer.sharedMaterial); AssetDatabase.CreateAsset(material,path); }
-            material.SetColor("_BaseColor", new Color(0.37f,0.39f,0.36f));
-            material.SetColor("_EmissionColor",Color.black); material.DisableKeyword("_EMISSION");
-            material.SetFloat("_Smoothness",0.26f); renderer.sharedMaterial = material;
-        }
         foreach (var go in scene.GetRootGameObjects()) if (go.name == "Entry warning") Object.DestroyImmediate(go);
         ReplaceHud(session);
         EditorSceneManager.SaveScene(scene,OutpostBuilder.BlackwoodScenePath);
@@ -112,10 +102,7 @@ public static class ForestChapterBuilder
         rock = Surface("Scanned mossy granite",Color.white,"rock_moss_set_01",0.14f);
         deadwood = Surface("Scanned deadwood",new Color(0.78f,0.79f,0.73f),"dead_tree_trunk",0.14f);
         fern = Foliage("Scanned ferns", "fern_02/diff.jpg","fern_02/nor_gl.jpg","fern_02/alpha.png",new Color(0.73f,0.77f,0.63f));
-        saplingBark = Surface("Young pine bark",new Color(0.70f,0.68f,0.60f),null,0.12f);
-        saplingBark.SetTexture("_BaseMap",Texture("pine_sapling_small/bark_diff.jpg")); saplingBark.SetTexture("_BumpMap",Texture("pine_sapling_small/bark_nor_gl.jpg")); saplingBark.EnableKeyword("_NORMALMAP");
-        saplingLeaf = Foliage("Young pine needles","pine_sapling_small/twig_diff.jpg","pine_sapling_small/twig_nor_gl.jpg","pine_sapling_small/twig_alpha.png",new Color(0.71f,0.77f,0.65f));
-        rocks = Sources("rock_moss_set_01"); ferns = Sources("fern_02"); logs = Sources("dead_tree_trunk"); saplings = Sources("pine_sapling_small");
+        rocks = Sources("rock_moss_set_01"); ferns = Sources("fern_02"); logs = Sources("dead_tree_trunk");
         foreach (string part in new[] { "bark", "trunk_a", "trunk_b", "trunk_c" })
         {
             var mat = Surface("Fir " + part,new Color(.94f,.95f,.91f),null,.18f);
@@ -144,8 +131,11 @@ public static class ForestChapterBuilder
         string path = Art+"/"+name+".mat";
         var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
         if (mat == null) { mat = new Material(Shader.Find("GunQuest/Forest Foliage")); AssetDatabase.CreateAsset(mat,path); }
+        mat.shader = Shader.Find("GunQuest/Forest Foliage");
         mat.SetTexture("_BaseMap",Texture(diffuse)); mat.SetTexture("_BumpMap",Texture(normal)); mat.SetTexture("_AlphaMap",Texture(alpha));
-        mat.SetColor("_BaseColor",tint); mat.SetFloat("_Wind",0.025f); mat.enableInstancing = true; EditorUtility.SetDirty(mat); return mat;
+        mat.SetColor("_BaseColor",tint); mat.SetColor("_HueVariation",new Color(.55f,.76f,.36f,.28f)); mat.SetColor("_SubsurfaceColor",new Color(.64f,.88f,.36f));
+        mat.SetFloat("_Cutoff",.36f); mat.SetFloat("_Wind",0.022f); mat.SetFloat("_WindSpeed",1.1f); mat.SetFloat("_Smoothness",.16f); mat.SetFloat("_SubsurfaceStrength",.30f);
+        mat.enableInstancing = true; EditorUtility.SetDirty(mat); return mat;
     }
 
     private static float RouteDistance(Vector2 p,Vector2[] route)
@@ -237,9 +227,13 @@ public static class ForestChapterBuilder
         if(profile==null) { profile=ScriptableObject.CreateInstance<VolumeProfile>(); AssetDatabase.CreateAsset(profile,Art+"/Forest grade.asset"); }
         foreach(var c in profile.components.ToArray()) if(c!=null) Object.DestroyImmediate(c,true); profile.components.Clear();
         Effect<Tonemapping>(profile).mode.Override(TonemappingMode.ACES);
-        var colour=Effect<ColorAdjustments>(profile); colour.saturation.Override(-17); colour.contrast.Override(9); colour.postExposure.Override(0.35f);
-        var bloom=Effect<Bloom>(profile); bloom.intensity.Override(0.10f); bloom.threshold.Override(1.5f);
-        Effect<Vignette>(profile).intensity.Override(0.19f); volume.sharedProfile=profile;
+        var colour=Effect<ColorAdjustments>(profile); colour.saturation.Override(-5); colour.contrast.Override(13); colour.postExposure.Override(0.12f); colour.colorFilter.Override(new Color(0.96f,1f,0.94f));
+        var balance=Effect<WhiteBalance>(profile); balance.temperature.Override(-3f); balance.tint.Override(-4f);
+        var lift=Effect<LiftGammaGain>(profile); lift.lift.Override(new Vector4(.975f,.995f,1.015f,0)); lift.gamma.Override(new Vector4(1.015f,1f,.985f,0)); lift.gain.Override(new Vector4(1.035f,1.01f,.975f,0));
+        var bloom=Effect<Bloom>(profile); bloom.intensity.Override(0.19f); bloom.threshold.Override(1.08f); bloom.scatter.Override(0.58f); bloom.highQualityFiltering.Override(false);
+        var vignette=Effect<Vignette>(profile); vignette.intensity.Override(0.16f); vignette.smoothness.Override(0.42f);
+        var grain=Effect<FilmGrain>(profile); grain.intensity.Override(0.045f); grain.response.Override(0.8f);
+        Effect<ChromaticAberration>(profile).intensity.Override(0.009f); Effect<LensDistortion>(profile).intensity.Override(-0.018f); volume.sharedProfile=profile;
         EditorUtility.SetDirty(profile);
         var probe=new GameObject("Forest reflection capture").AddComponent<ReflectionProbe>(); probe.transform.position=Ground(0,0)+Vector3.up*5;
         probe.size=new Vector3(120,40,130); probe.mode=ReflectionProbeMode.Realtime; probe.refreshMode=ReflectionProbeRefreshMode.OnAwake; probe.resolution=128;
@@ -384,13 +378,13 @@ public static class ForestChapterBuilder
         var random=new System.Random(4217);
         // Hand-placed silhouette trees frame the opening view and each key turn.
         Vector2[] hero={new(-14,-48),new(-3,-45),new(-18,-39),new(-3,-33),new(7,-27),new(17,-19),new(-18,-17),new(15,-8),new(-4,7),new(13,15),new(-29,24),new(-4,27),new(17,36),new(-3,45)};
-        int n=0;foreach(var p in hero) MatureTree(p,17+n%4*2.2f,n++*51);
+        int n=0;foreach(var p in hero) MatureTree(p,17+n%4*2.2f,n++*51,true);
         // Density is controlled by distance to authored routes and functional clearings.
-        for(int i=0;i<380;i++)
+        for(int i=0;i<240;i++)
         {
             float x=-76+(float)random.NextDouble()*152,z=-68+(float)random.NextDouble()*164;
             if(PathDistance(x,z)<5.1f || InClearing(x,z) || Mathf.Abs(z-Creek(x))<4f) continue;
-            if(i%2==0 || Mathf.Abs(x)>38) MatureTree(new Vector2(x,z),16+(float)random.NextDouble()*10,(float)random.NextDouble()*360);
+            if(i%2==0 || Mathf.Abs(x)>38) MatureTree(new Vector2(x,z),16+(float)random.NextDouble()*10,(float)random.NextDouble()*360,false);
         }
         for(int i=0;i<180;i++)
         {
@@ -400,16 +394,16 @@ public static class ForestChapterBuilder
             if(i%4==0)
                 Scan(rocks[i%rocks.Length],Ground(x,z)-Vector3.up*.12f,1.1f+(float)random.NextDouble()*2.2f,(float)random.NextDouble()*360,new[]{rock},true,true);
             else if(i%6==0)
-                Scan(saplings[i%saplings.Length],Ground(x,z),1.3f+(float)random.NextDouble()*1.2f,(float)random.NextDouble()*360,new[]{saplingBark,saplingLeaf},false,false);
-            else Scan(ferns[i%ferns.Length],Ground(x,z),.5f+(float)random.NextDouble()*.55f,(float)random.NextDouble()*360,new[]{fern},false,false);
+                YoungTree(new Vector2(x,z),3.2f+(float)random.NextDouble()*2.2f,(float)random.NextDouble()*360,i);
+            else Scan(ferns[i%ferns.Length],Ground(x,z),.5f+(float)random.NextDouble()*.55f,(float)random.NextDouble()*360,new[]{fern},false,false,false);
         }
         // Fern beds run along the trail shoulders, never in a uniform grid across the path.
-        for(int i=0;i<220;i++)
+        for(int i=0;i<160;i++)
         {
             float z=-48+(float)random.NextDouble()*94,x=-32+(float)random.NextDouble()*58;
             float distance=PathDistance(x,z);
             if(distance<2.5f || distance>7 || InClearing(x,z) || Mathf.Abs(z-Creek(x))<1.8f) continue;
-            Scan(ferns[i%ferns.Length],Ground(x,z),.45f+(float)random.NextDouble()*.55f,i*47,new[]{fern},false,false);
+            Scan(ferns[i%ferns.Length],Ground(x,z),.45f+(float)random.NextDouble()*.55f,i*47,new[]{fern},false,false,false);
         }
         // Moss outcrops anchor the creek banks and distant ridge silhouette.
         for(int i=0;i<38;i++)
@@ -423,13 +417,15 @@ public static class ForestChapterBuilder
         Vector2.Distance(new Vector2(x,z),new Vector2(-12,-28))<5.5f ||
         (x>-28 && x<-9 && z>17 && z<31) || Vector2.Distance(new Vector2(x,z),new Vector2(7,43))<6;
 
-    private static void MatureTree(Vector2 p,float height,float yaw)
+    private static void MatureTree(Vector2 p,float height,float yaw,bool hero)
     {
         int variant=Mathf.Abs(Mathf.RoundToInt(yaw))%2;
-        var tree=new GameObject("Scanned fir / three geometry LODs");tree.transform.SetParent(flora);tree.transform.position=Ground(p.x,p.y);
-        var levels=new LOD[3];float[] distances={.28f,.10f,.018f};
-        for(int lod=0;lod<3;lod++)
+        var tree=new GameObject(hero?"Hero fir / three geometry LODs":"Forest fir / optimized geometry");tree.transform.SetParent(flora);tree.transform.position=Ground(p.x,p.y);
+        int firstLod=hero?0:2, levelCount=hero?3:1;
+        var levels=new LOD[levelCount];float[] distances=hero?new[]{.48f,.17f,.025f}:new[]{.012f};
+        for(int level=0;level<levelCount;level++)
         {
+            int lod=firstLod+level;
             var source=firLods[variant,lod];var originals=source.GetComponent<Renderer>().sharedMaterials;
             var materials=new Material[originals.Length];
             for(int i=0;i<materials.Length;i++)
@@ -438,21 +434,35 @@ public static class ForestChapterBuilder
                 string part=name.Contains("twig")?"twig":name.Contains("trunk_a")?"trunk_a":name.Contains("trunk_b")?"trunk_b":name.Contains("trunk_c")?"trunk_c":"bark";
                 materials[i]=firMaterials[part];
             }
-            var mesh=Scan(source,Ground(p.x,p.y)-Vector3.up*.08f,height,yaw,materials,false,false);
+            var mesh=Scan(source,Ground(p.x,p.y)-Vector3.up*.08f,height,yaw,materials,false,false,hero&&lod<2);
             Object.DestroyImmediate(mesh.GetComponent<LODGroup>());mesh.transform.SetParent(tree.transform,true);
-            levels[lod]=new LOD(distances[lod],new[]{mesh.GetComponent<Renderer>()});
+            levels[level]=new LOD(distances[level],new[]{mesh.GetComponent<Renderer>()});
         }
         var group=tree.AddComponent<LODGroup>();group.SetLODs(levels);group.RecalculateBounds();
-        if(Mathf.Abs(p.x)<46 && p.y>-60 && p.y<61)
+        if(Mathf.Abs(p.x)<46 && p.y>-60 && p.y<61 && PathDistance(p.x,p.y)<8f)
         {
             var collision=new GameObject("Trunk collision",typeof(CapsuleCollider));collision.transform.SetParent(world);collision.transform.position=Ground(p.x,p.y)+Vector3.up*3;
             var capsule=collision.GetComponent<CapsuleCollider>();capsule.height=6;capsule.radius=.42f;
         }
     }
-    private static GameObject Scan(MeshFilter source,Vector3 position,float size,float yaw,Material[] materials,bool collides,bool useWidth)
+    private static void YoungTree(Vector2 p,float height,float yaw,int seed)
+    {
+        int variant=Mathf.Abs(seed)%2;
+        var source=firLods[variant,2];var originals=source.GetComponent<Renderer>().sharedMaterials;
+        var materials=new Material[originals.Length];
+        for(int i=0;i<materials.Length;i++)
+        {
+            string name=originals[i].name;
+            string part=name.Contains("twig")?"twig":name.Contains("trunk_a")?"trunk_a":name.Contains("trunk_b")?"trunk_b":name.Contains("trunk_c")?"trunk_c":"bark";
+            materials[i]=firMaterials[part];
+        }
+        var tree=Scan(source,Ground(p.x,p.y),height,yaw,materials,false,false,false);
+        tree.name="Young fir / optimized geometry";
+    }
+    private static GameObject Scan(MeshFilter source,Vector3 position,float size,float yaw,Material[] materials,bool collides,bool useWidth,bool castShadows=true)
     {
         var go=new GameObject(source.name,typeof(MeshFilter),typeof(MeshRenderer));go.transform.SetParent(flora);
-        go.GetComponent<MeshFilter>().sharedMesh=source.sharedMesh;var renderer=go.GetComponent<MeshRenderer>();renderer.sharedMaterials=materials;
+        go.GetComponent<MeshFilter>().sharedMesh=source.sharedMesh;var renderer=go.GetComponent<MeshRenderer>();renderer.sharedMaterials=materials;renderer.shadowCastingMode=castShadows?ShadowCastingMode.On:ShadowCastingMode.Off;
         go.transform.rotation=Quaternion.Euler(0,yaw,0)*source.transform.rotation;go.transform.localScale=source.transform.lossyScale;
         var b=renderer.bounds;float dimension=useWidth?Mathf.Max(b.size.x,b.size.z):b.size.y;
         go.transform.localScale*=size/Mathf.Max(.01f,dimension);b=renderer.bounds;

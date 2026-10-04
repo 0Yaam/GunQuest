@@ -123,6 +123,7 @@ public static class OutpostBuilder
         AtmosphericParticles("Outpost dust", new Vector3(0, 5f, 0), new Vector3(57, 10, 57),
             new Color(1f, 0.72f, 0.38f, 0.28f), 240, 0.035f, 0.12f, false);
 
+        OptimizeEnvironment(geometry);
         var surface = geometry.gameObject.AddComponent<NavMeshSurface>();
         surface.collectObjects = CollectObjects.Children;
         surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
@@ -160,9 +161,11 @@ public static class OutpostBuilder
         };
         PlayerSettings.productName = "GunQuest";
         PlayerSettings.companyName = "GunQuest";
-        PlayerSettings.defaultScreenWidth = 1600;
-        PlayerSettings.defaultScreenHeight = 900;
-        PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+        PlayerSettings.defaultScreenWidth = 1920;
+        PlayerSettings.defaultScreenHeight = 1080;
+        PlayerSettings.defaultIsNativeResolution = true;
+        PlayerSettings.resizableWindow = true;
+        PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
         AssetDatabase.SaveAssets();
         Debug.Log("GUNQUEST CAMPAIGN GENERATED: Outpost, Blackwood, Skyline.");
     }
@@ -244,6 +247,7 @@ public static class OutpostBuilder
             new Color(0.55f, 0.70f, 0.58f), 2.05f, new Vector3(32, -48, 0), 26f, 108f, 0.46f, 0.27f, 17f, 0f);
         AtmosphericParticles("Blackwood fireflies", new Vector3(0, 4.5f, 1), new Vector3(55, 8, 55),
             new Color(0.30f, 1f, 0.48f, 0.72f), 135, 0.055f, 0.18f, false);
+        OptimizeEnvironment(geometry);
         BakeNavigation(geometry, ArtPath + "/BlackwoodNavMesh.asset");
         CreateMissionActors("02", "BLACKWOOD",
             "A forgotten village beneath a poisoned canopy.\nBreak the signal feeding the awakened grove.",
@@ -332,6 +336,7 @@ public static class OutpostBuilder
             new Color(0.30f, 0.40f, 0.76f), 1.15f, new Vector3(55, 28, 0), 34f, 125f, 0.72f, 0.31f, 22f, -4f);
         AtmosphericParticles("Skyline rain", new Vector3(0, 10f, 0), new Vector3(68, 18, 68),
             new Color(0.30f, 0.62f, 1f, 0.25f), 850, 0.022f, 8.5f, true);
+        OptimizeEnvironment(geometry);
         BakeNavigation(geometry, ArtPath + "/SkylineNavMesh.asset");
         CreateMissionActors("03", "SKYLINE",
             "A blackout district under hostile control.\nFight block by block and cut the broadcast.",
@@ -400,6 +405,39 @@ public static class OutpostBuilder
         surface.navMeshData = AssetDatabase.LoadAssetAtPath<NavMeshData>(assetPath);
     }
 
+    internal static void OptimizeEnvironment(Transform root)
+    {
+        string[] noShadowDetails =
+        {
+            "Window ", "Facade vertical seam", "HVAC louvre", "Roller door slat", "Service pipe",
+            "Vent grille", "Drain grate", "Lane paint", "Road dash", "Apron edge", "Avenue marker",
+            "Cross-street marker", "Sidewalk light", "Cargo rib", "Cargo stripe", "Cargo band",
+            "Cargo corner", "Hazard inset", "Recessed equipment panel", "Steel reinforcement hoop",
+            "Stair nosing", "Perimeter beacon", "Relay signal", "Signal status", "Door luminaire",
+            "Door canopy", "Lamp diffuser", "Lamp housing", "Roof corrugation", "Painted wayfinding"
+        };
+        foreach (var renderer in root.GetComponentsInChildren<MeshRenderer>(true))
+        {
+            foreach (var material in renderer.sharedMaterials) if (material != null) material.enableInstancing = true;
+            renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+            bool managedByLod = renderer.GetComponentInParent<LODGroup>() != null;
+            if (!managedByLod)
+            {
+                var flags = GameObjectUtility.GetStaticEditorFlags(renderer.gameObject);
+                GameObjectUtility.SetStaticEditorFlags(renderer.gameObject, flags | StaticEditorFlags.BatchingStatic);
+            }
+            string objectName = renderer.gameObject.name;
+            for (int i = 0; i < noShadowDetails.Length; i++)
+            {
+                if (!objectName.Contains(noShadowDetails[i])) continue;
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                break;
+            }
+            if (objectName.Contains("glazing") || objectName.Contains("luminaire") || objectName.Contains("signal"))
+                renderer.receiveShadows = false;
+        }
+    }
+
     private static GameObject CreatePlayer(Vector3 start)
     {
         var player = new GameObject("Operator") { tag = "Player" };
@@ -413,13 +451,13 @@ public static class OutpostBuilder
         cam.transform.SetParent(player.transform, false);
         cam.transform.localPosition = new Vector3(0, 1.7f, 0);
         cam.nearClipPlane = 0.05f;
-        cam.farClipPlane = 500f;
+        cam.farClipPlane = 180f;
         cam.fieldOfView = 75f;
         cam.clearFlags = CameraClearFlags.Skybox;
         var cameraData = cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
         cameraData.renderPostProcessing = true;
-        cameraData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
-        cameraData.antialiasingQuality = AntialiasingQuality.High;
+        cameraData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
+        cameraData.antialiasingQuality = AntialiasingQuality.Low;
         var motor = player.AddComponent<PlayerMotor>();
         motor.jumpHeight = 1.25f;
         motor.gravity = -22f;
@@ -472,10 +510,28 @@ public static class OutpostBuilder
 
     internal static void PrepareActorMaterials()
     {
+        Directory.CreateDirectory("Assets/Resources");
+        EnsureRuntimeMaterial("CombatTracer", "GunQuest/Combat Tracer");
+        EnsureRuntimeMaterial("CombatSpark", "GunQuest/Combat Spark");
+        EnsureRuntimeMaterial("MuzzleFlash", "GunQuest/Muzzle Flash");
+        EnsureRuntimeMaterial("ImpactDecal", "GunQuest/Impact Decal");
+        EnsureRuntimeMaterial("WeaponSmoke", "GunQuest/Weapon Smoke");
         dark = Material("Graphite", new Color(0.12f, 0.15f, 0.18f));
         concrete = Material("Concrete", new Color(0.45f, 0.48f, 0.5f));
         teal = Material("Signal teal", new Color(0.15f, 0.75f, 0.61f), true);
         orange = Material("Signal amber", new Color(1f, 0.32f, 0.08f), true);
+    }
+
+    private static void EnsureRuntimeMaterial(string name, string shaderName)
+    {
+        string path = "Assets/Resources/" + name + ".mat";
+        var shader = Shader.Find(shaderName);
+        if (shader == null) return;
+        var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null) { material = new Material(shader); AssetDatabase.CreateAsset(material, path); }
+        material.shader = shader;
+        material.enableInstancing = true;
+        EditorUtility.SetDirty(material);
     }
 
     private static Enemy CreateEnemy()
@@ -595,15 +651,16 @@ public static class OutpostBuilder
         importer.sRGBTexture = !normal && !hdr;
         importer.wrapMode = ui ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
         importer.filterMode = FilterMode.Trilinear;
-        importer.anisoLevel = ui ? 1 : 16;
+        importer.anisoLevel = ui ? 1 : 8;
         importer.mipmapEnabled = !ui;
-        importer.maxTextureSize = ui ? 1024 : 4096;
+        importer.streamingMipmaps = !ui && !hdr;
+        importer.maxTextureSize = ui ? 1024 : 2048;
         importer.textureCompression = TextureImporterCompression.CompressedHQ;
         var standalone = importer.GetPlatformTextureSettings("Standalone");
         standalone.overridden = !ui;
-        standalone.maxTextureSize = ui ? 1024 : 4096;
+        standalone.maxTextureSize = ui ? 1024 : 2048;
         standalone.textureCompression = TextureImporterCompression.CompressedHQ;
-        standalone.compressionQuality = 100;
+        standalone.compressionQuality = 75;
         importer.SetPlatformTextureSettings(standalone);
         if (ui)
         {
@@ -839,6 +896,7 @@ public static class OutpostBuilder
         if (mat == null) { mat = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(mat, path); }
         mat.color = color;
         mat.SetFloat("_Smoothness", 0.3f);
+        mat.enableInstancing = true;
         if (emissive) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", color * 1.5f); }
         EditorUtility.SetDirty(mat);
         return mat;

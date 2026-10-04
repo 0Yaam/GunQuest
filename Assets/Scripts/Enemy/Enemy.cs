@@ -9,6 +9,10 @@ public class Enemy : MonoBehaviour
     private StateMachine stateMachine;
     private NavMeshAgent agent;
     private GameObject player;
+    private Transform playerTransform;
+    private PlayerHealth playerHealth;
+    private float nextSightCheck;
+    private bool canSeePlayer;
 
     public NavMeshAgent Agent => agent;
     public GameObject Player => player;
@@ -59,6 +63,13 @@ public class Enemy : MonoBehaviour
             player = GameObject.FindGameObjectWithTag("Player");
         }
 
+        if (player != null)
+        {
+            playerTransform = player.transform;
+            playerHealth = player.GetComponent<PlayerHealth>();
+            nextSightCheck = Time.time + Random.Range(0f, 0.12f);
+        }
+
         stateMachine.Initialise();
     }
 
@@ -66,47 +77,50 @@ public class Enemy : MonoBehaviour
     {
         if (huntPlayer && player != null && agent.isOnNavMesh && Time.time >= nextHunt && !(stateMachine.activeState is AttackState))
         {
-            agent.SetDestination(player.transform.position);
+            agent.SetDestination(playerTransform.position);
             nextHunt = Time.time + 0.5f;
-        }
-        if (stateMachine != null && stateMachine.activeState != null)
-        {
-            currentState = stateMachine.activeState.ToString();
         }
     }
 
+    public void SetCurrentState(string value) => currentState = value;
+
     public bool CanSeePlayer()
     {
-        if (player == null || (player.TryGetComponent<PlayerHealth>(out var health) && health.IsDead))
+        if (playerTransform == null || (playerHealth != null && playerHealth.IsDead))
         {
+            canSeePlayer = false;
             return false;
         }
 
-        Vector3 eyePos = transform.position + (Vector3.up * eyeHeight);
-        Vector3 targetPos = player.transform.position + Vector3.up; // Aim towards torso
-        Vector3 directionToPlayer = targetPos - eyePos;
-        float distanceToPlayer = directionToPlayer.magnitude;
+        if (Time.time < nextSightCheck) return canSeePlayer;
+        nextSightCheck = Time.time + 0.12f;
 
-        // Check if within sight distance
-        if (distanceToPlayer <= sightDistance)
+        Vector3 eyePos = transform.position + (Vector3.up * eyeHeight);
+        Vector3 targetPos = playerTransform.position + Vector3.up;
+        Vector3 directionToPlayer = targetPos - eyePos;
+        float sqrDistance = directionToPlayer.sqrMagnitude;
+
+        if (sqrDistance <= sightDistance * sightDistance)
         {
-            // Check field of view angle
-            float angleToPlayer = Vector3.Angle(transform.forward, directionToPlayer);
-            if (angleToPlayer <= fieldOfView * 0.5f)
+            float distanceToPlayer = Mathf.Sqrt(sqrDistance);
+            Vector3 sightDirection = directionToPlayer / Mathf.Max(distanceToPlayer, 0.001f);
+            float minimumDot = Mathf.Cos(fieldOfView * 0.5f * Mathf.Deg2Rad);
+            if (Vector3.Dot(transform.forward, sightDirection) >= minimumDot)
             {
-                // Raycast to check for line of sight blockage (walls, obstacles)
-                Ray ray = new Ray(eyePos, directionToPlayer.normalized);
-                if (Physics.Raycast(ray, out RaycastHit hit, sightDistance, ~0, QueryTriggerInteraction.Ignore))
+                Ray ray = new Ray(eyePos, sightDirection);
+                if (Physics.Raycast(ray, out RaycastHit hit, distanceToPlayer, ~0, QueryTriggerInteraction.Ignore))
                 {
-                    if (hit.transform == player.transform || hit.transform.IsChildOf(player.transform))
+                    if (hit.transform == playerTransform || hit.transform.IsChildOf(playerTransform))
                     {
                         Debug.DrawRay(ray.origin, ray.direction * distanceToPlayer, Color.red);
-                        return true;
+                        canSeePlayer = true;
+                        return canSeePlayer;
                     }
                 }
             }
         }
 
-        return false;
+        canSeePlayer = false;
+        return canSeePlayer;
     }
 }
