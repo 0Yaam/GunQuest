@@ -942,11 +942,11 @@ PlayerSettings:
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId: ca66de02-3e85-4df2-bfed-afaa7338340d
+  cloudProjectId: 00000000-0000-0000-0000-000000000000
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: GunQuest
-  organizationId: khanhvuong123s
+  organizationId:
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
